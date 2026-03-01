@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    import threading
+    from collections.abc import Awaitable, Callable
+
     from dagron._internal import DAG
 
 
@@ -77,7 +79,7 @@ class DAGExecutor:
 
     def __init__(
         self,
-        dag,
+        dag: DAG,
         max_workers: int | None = None,
         costs: dict[str, float] | None = None,
         callbacks: ExecutionCallbacks | None = None,
@@ -93,7 +95,7 @@ class DAGExecutor:
 
     def execute(
         self,
-        tasks: dict[str, Callable],
+        tasks: dict[str, Callable[[], Any]],
         timeout: float | None = None,
         cancel_event: threading.Event | None = None,
     ) -> ExecutionResult:
@@ -246,7 +248,7 @@ class DAGExecutor:
         result.trace = trace
         return result
 
-    def _run_task(self, name: str, task_fn: Callable) -> NodeResult:
+    def _run_task(self, name: str, task_fn: Callable[[], Any]) -> NodeResult:
         if self._callbacks.on_start:
             self._callbacks.on_start(name)
 
@@ -291,7 +293,7 @@ class AsyncDAGExecutor:
 
     def __init__(
         self,
-        dag,
+        dag: DAG,
         max_workers: int | None = None,
         costs: dict[str, float] | None = None,
         callbacks: ExecutionCallbacks | None = None,
@@ -307,7 +309,7 @@ class AsyncDAGExecutor:
 
     async def execute(
         self,
-        tasks: dict[str, Callable[[], Awaitable]],
+        tasks: dict[str, Callable[[], Awaitable[Any]]],
         timeout: float | None = None,
         cancel_event: asyncio.Event | None = None,
     ) -> ExecutionResult:
@@ -406,7 +408,7 @@ class AsyncDAGExecutor:
 
             if coros:
                 node_results = await asyncio.gather(*coros)
-                for name, nr in zip(names, node_results):
+                for name, nr in zip(names, node_results, strict=True):
                     result.node_results[name] = nr
                     if nr.status == NodeStatus.COMPLETED:
                         result.succeeded += 1
@@ -449,7 +451,7 @@ class AsyncDAGExecutor:
     async def _run_task(
         self,
         name: str,
-        task_fn: Callable[[], Awaitable],
+        task_fn: Callable[[], Awaitable[Any]],
         semaphore: asyncio.Semaphore | None,
         timeout: float | None = None,
     ) -> NodeResult:
@@ -478,7 +480,7 @@ class AsyncDAGExecutor:
                 result=value,
                 duration_seconds=duration,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = time.monotonic() - t0
             return NodeResult(
                 name=name,
@@ -538,7 +540,7 @@ class IncrementalExecutor:
 
     def execute(
         self,
-        tasks: dict[str, Callable],
+        tasks: dict[str, Callable[[], Any]],
         changed_nodes: list[str] | None = None,
     ) -> IncrementalResult:
         """Execute tasks, reusing cached results where possible.
@@ -694,7 +696,7 @@ class IncrementalExecutor:
         result.trace = trace
         return result
 
-    def _run_task(self, name: str, task_fn: Callable) -> NodeResult:
+    def _run_task(self, name: str, task_fn: Callable[[], Any]) -> NodeResult:
         if self._callbacks.on_start:
             self._callbacks.on_start(name)
 

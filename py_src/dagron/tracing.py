@@ -79,9 +79,9 @@ class ExecutionTrace:
 
     def to_json(self) -> str:
         """Export trace as JSON."""
-        records = []
+        records: list[dict[str, Any]] = []
         for e in self._events:
-            record = {
+            record: dict[str, Any] = {
                 "event_type": e.event_type.value,
                 "timestamp": e.timestamp,
             }
@@ -104,7 +104,7 @@ class ExecutionTrace:
         Returns a JSON string compatible with the Chrome trace viewer.
         Each node execution becomes a Duration event (B/E pair).
         """
-        events = []
+        events: list[dict[str, Any]] = []
         pid = 1
         tid_map: dict[str, int] = {}
         next_tid = 1
@@ -136,7 +136,7 @@ class ExecutionTrace:
                 TraceEventType.NODE_FAILED,
                 TraceEventType.NODE_TIMED_OUT,
             ):
-                args = {"status": e.event_type.value}
+                args: dict[str, Any] = {"status": e.event_type.value}
                 if e.error:
                     args["error"] = e.error
                 events.append(

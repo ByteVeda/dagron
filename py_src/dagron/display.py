@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import subprocess
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Literal
 from xml.sax.saxutils import escape
 
 if TYPE_CHECKING:
-    from dagron._internal import DAG
+    from collections.abc import Callable
+
+    from dagron._internal import DAG, NodeId
 
 
 def pretty_print(
     dag: DAG,
     *,
-    layout: str = "vertical",
+    layout: Literal["vertical", "horizontal"] = "vertical",
     max_nodes: int = 50,
     show_payloads: bool = False,
     node_formatter: Callable[[str, Any], str] | None = None,
@@ -69,7 +71,9 @@ def pretty_print(
         return _render_vertical(levels, edges, labels)
 
 
-def _render_vertical(levels, edges, labels) -> str:
+def _render_vertical(
+    levels: list[list[NodeId]], edges: list[tuple[str, str]], labels: dict[str, str]
+) -> str:
     """Render DAG top-to-bottom with levels as rows."""
     # Build edge set for lookup
     edge_set = set(edges)
@@ -143,7 +147,9 @@ def _render_vertical(levels, edges, labels) -> str:
     return "\n".join(lines)
 
 
-def _render_horizontal(levels, edges, labels) -> str:
+def _render_horizontal(
+    levels: list[list[NodeId]], edges: list[tuple[str, str]], labels: dict[str, str]
+) -> str:
     """Render DAG left-to-right with levels as columns."""
     edge_set = set(edges)
     level_nodes = [[n.name for n in level] for level in levels]
@@ -224,7 +230,7 @@ def _repr_svg_(dag: DAG, *, max_nodes: int = 100) -> str:
         import graphviz
 
         src = graphviz.Source(dot_str)
-        return src.pipe(format="svg", encoding="utf-8")
+        return str(src.pipe(format="svg", encoding="utf-8"))
     except Exception:
         pass
 
@@ -245,7 +251,7 @@ def _repr_svg_(dag: DAG, *, max_nodes: int = 100) -> str:
     # Final fallback: ASCII in SVG
     try:
         ascii_art = pretty_print(dag, max_nodes=max_nodes)
-    except (ValueError, Exception):
+    except Exception:
         ascii_art = f"DAG(nodes={nc}, edges={dag.edge_count()})"
     return _svg_text(ascii_art)
 

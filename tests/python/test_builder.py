@@ -2,7 +2,7 @@
 
 import pytest
 
-from dagron import DAG, DAGBuilder, CycleError, DuplicateNodeError, NodeNotFoundError
+from dagron import DAG, CycleError, DAGBuilder, DuplicateNodeError, NodeNotFoundError
 
 
 class TestDAGBuilder:

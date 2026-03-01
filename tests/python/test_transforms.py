@@ -1,6 +1,6 @@
 import pytest
-from dagron import DAG, CycleError, DuplicateNodeError
 
+from dagron import DAG, CycleError, DuplicateNodeError
 
 # --- Transitive Reduction ---
 

@@ -2,10 +2,7 @@ def is_valid_topological_order(dag, order):
     """Verify that every edge (u, v) has u before v in the order."""
     names = [n.name for n in order]
     pos = {name: i for i, name in enumerate(names)}
-    for from_name, to_name in dag.edges():
-        if pos[from_name] >= pos[to_name]:
-            return False
-    return True
+    return all(pos[from_name] < pos[to_name] for from_name, to_name in dag.edges())
 
 
 class TestTopologicalSortPriority:
