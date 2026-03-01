@@ -1,0 +1,13 @@
+[package]
+name = "dagron-py"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+
+[lib]
+name = "dagron"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+dagron-core = { path = "../dagron-core" }
+pyo3 = { workspace = true }

@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/dagron-core", "crates/dagron-py"]
+resolver = "2"
+
+[workspace.dependencies]
+petgraph = "0.7"
+ahash = "0.8"
+thiserror = "2"
+pyo3 = { version = "0.24", features = ["abi3-py312", "multiple-pymethods"] }

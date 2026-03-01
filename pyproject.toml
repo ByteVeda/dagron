@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "dagron"
+version = "0.1.0"
+description = "A fast Rust-backed DAG engine for Python"
+requires-python = ">=3.12"
+
+[tool.maturin]
+manifest-path = "crates/dagron-py/Cargo.toml"
+python-source = "py_src"
+module-name = "dagron._internal"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]

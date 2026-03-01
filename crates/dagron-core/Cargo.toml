@@ -1,0 +1,20 @@
+[package]
+name = "dagron-core"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.83"
+
+[lib]
+name = "dagron_core"
+
+[dependencies]
+petgraph = { workspace = true }
+ahash = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "graph_bench"
+harness = false
