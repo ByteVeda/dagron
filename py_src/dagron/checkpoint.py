@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 import pickle
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -92,7 +91,8 @@ class CheckpointExecutor:
         if not path.exists():
             return None
         with open(path, "rb") as f:
-            return pickle.load(f)  # noqa: S301
+            result: dict[str, Any] = pickle.load(f)
+            return result
 
     def _save_meta(self, completed: list[str], failed: list[str]) -> None:
         meta = {
@@ -109,7 +109,8 @@ class CheckpointExecutor:
         if not path.exists():
             return None
         with open(path) as f:
-            return json.load(f)
+            result: dict[str, Any] = json.load(f)
+            return result
 
     def checkpoint_info(self) -> CheckpointInfo | None:
         """Get information about the current checkpoint state.

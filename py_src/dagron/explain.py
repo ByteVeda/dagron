@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from dagron._internal import DAG
@@ -101,7 +101,7 @@ def explain(dag: DAG, node_name: str, costs: dict[str, float] | None = None) -> 
             break
 
     # Critical path membership
-    cp_nodes, cp_cost = dag.critical_path(costs)
+    cp_nodes, _cp_cost = dag.critical_path(costs)
     cp_names = [n.name for n in cp_nodes]
     on_critical_path = node_name in cp_names
 

@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from dagron._internal import DAG
     from dagron.executor import ExecutionResult
 
@@ -54,7 +52,7 @@ def _get_columns(df: Any, framework: str) -> list[str]:
     if framework == "pandas":
         return list(df.columns)
     if framework == "polars":
-        return df.columns
+        return list(df.columns)
     return []
 
 

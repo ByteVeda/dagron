@@ -5,16 +5,13 @@ from __future__ import annotations
 import asyncio
 import inspect
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from dagron._internal import DAG
     from dagron.executor import ExecutionCallbacks, ExecutionResult
-
-F = TypeVar("F", bound="Callable[..., Any]")
-
 
 @dataclass(frozen=True)
 class TaskSpec:
@@ -26,7 +23,7 @@ class TaskSpec:
     is_async: bool
 
 
-def task(fn: F) -> F:
+def task[F: Callable[..., Any]](fn: F) -> F:
     """Decorator that marks a function as a DAG task.
 
     Dependencies are inferred from the function's parameter names.
@@ -71,7 +68,7 @@ def task(fn: F) -> F:
 
 def _get_spec(fn: Any) -> TaskSpec:
     """Extract the TaskSpec from a decorated function."""
-    spec = getattr(fn, "_dagron_task", None)
+    spec: TaskSpec | None = getattr(fn, "_dagron_task", None)
     if spec is None:
         raise TypeError(
             f"{fn!r} is not a @dagron.task-decorated function. "
