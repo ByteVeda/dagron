@@ -9,10 +9,11 @@ impl<P> DAG<P> {
     /// Sources (no dependencies) come first.
     pub fn topological_sort(&self) -> Result<Vec<NodeId>, DagronError> {
         {
-            let mut cache = self.cache.lock().unwrap();
+            let cache = self.cache.read().unwrap();
             if cache.gen() == self.generation {
                 if let Some(cached) = cache.topo_sort().cloned() {
-                    cache.record_hit();
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
                     return cached;
                 }
             }
@@ -29,7 +30,7 @@ impl<P> DAG<P> {
                     .collect()
             });
         {
-            let mut cache = self.cache.lock().unwrap();
+            let mut cache = self.cache.write().unwrap();
             cache.record_miss();
             cache.set_gen(self.generation);
             cache.set_topo_sort(result.clone());
@@ -40,10 +41,11 @@ impl<P> DAG<P> {
     /// Return nodes in topological order using DFS (reverse postorder).
     pub fn topological_sort_dfs(&self) -> Result<Vec<NodeId>, DagronError> {
         {
-            let mut cache = self.cache.lock().unwrap();
+            let cache = self.cache.read().unwrap();
             if cache.gen() == self.generation {
                 if let Some(cached) = cache.topo_sort_dfs().cloned() {
-                    cache.record_hit();
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
                     return cached;
                 }
             }
@@ -60,7 +62,7 @@ impl<P> DAG<P> {
                     .collect()
             });
         {
-            let mut cache = self.cache.lock().unwrap();
+            let mut cache = self.cache.write().unwrap();
             cache.record_miss();
             cache.set_gen(self.generation);
             cache.set_topo_sort_dfs(result.clone());
@@ -72,10 +74,11 @@ impl<P> DAG<P> {
     /// Level 0 = roots, Level 1 = nodes depending only on roots, etc.
     pub fn topological_levels(&self) -> Result<Vec<Vec<NodeId>>, DagronError> {
         {
-            let mut cache = self.cache.lock().unwrap();
+            let cache = self.cache.read().unwrap();
             if cache.gen() == self.generation {
                 if let Some(cached) = cache.topo_levels().cloned() {
-                    cache.record_hit();
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
                     return cached;
                 }
             }
@@ -97,7 +100,7 @@ impl<P> DAG<P> {
                     .collect()
             });
         {
-            let mut cache = self.cache.lock().unwrap();
+            let mut cache = self.cache.write().unwrap();
             cache.record_miss();
             cache.set_gen(self.generation);
             cache.set_topo_levels(result.clone());

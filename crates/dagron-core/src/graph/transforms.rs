@@ -1,3 +1,4 @@
+use ahash::AHashSet;
 use petgraph::visit::{EdgeRef, IntoEdgeReferences, IntoNodeIdentifiers};
 
 use crate::algorithms;
@@ -234,5 +235,137 @@ impl<P: Clone> DAG<P> {
         }
 
         Ok(new_dag)
+    }
+
+    /// Return a new DAG with all edges reversed.
+    ///
+    /// Same nodes, all edges flipped (A→B becomes B→A).
+    /// Edge weights and labels are preserved on the reversed edge.
+    pub fn reverse(&self) -> DAG<P> {
+        let mut new_dag = DAG::new();
+
+        // Clone all nodes
+        for idx in self.graph.node_identifiers() {
+            let node = &self.graph[idx];
+            let _ = new_dag.add_node(node.name.clone(), node.payload.clone());
+        }
+
+        // Add reversed edges
+        for edge in self.graph.edge_references() {
+            let from_name = &self.graph[edge.target()].name; // flipped
+            let to_name = &self.graph[edge.source()].name; // flipped
+            let data = edge.weight();
+            let _ = new_dag.add_edge(from_name, to_name, Some(data.weight), data.label.clone());
+        }
+
+        new_dag
+    }
+
+    /// Collapse a set of nodes into a single summary node.
+    ///
+    /// Internal edges (both endpoints in the collapse set) are dropped.
+    /// External edges are redirected to/from the collapsed node (duplicates and
+    /// self-loops are skipped).
+    pub fn collapse(
+        &self,
+        nodes: &[&str],
+        name: &str,
+        payload: P,
+    ) -> Result<DAG<P>, DagronError> {
+        let collapse_set: AHashSet<&str> = nodes.iter().copied().collect();
+
+        // Validate all nodes exist
+        for &n in nodes {
+            if !self.has_node(n) {
+                return Err(DagronError::NodeNotFound(n.to_string()));
+            }
+        }
+
+        // Check collapsed name doesn't collide with surviving nodes
+        let surviving_names: AHashSet<&str> = self
+            .graph
+            .node_identifiers()
+            .map(|idx| self.graph[idx].name.as_str())
+            .filter(|n| !collapse_set.contains(n))
+            .collect();
+
+        if surviving_names.contains(name) {
+            return Err(DagronError::DuplicateNode(name.to_string()));
+        }
+
+        let mut new_dag = DAG::new();
+
+        // Add surviving nodes
+        for idx in self.graph.node_identifiers() {
+            let node = &self.graph[idx];
+            if !collapse_set.contains(node.name.as_str()) {
+                let _ = new_dag.add_node(node.name.clone(), node.payload.clone());
+            }
+        }
+
+        // Add the collapsed node
+        new_dag.add_node(name.to_string(), payload)?;
+
+        // Track edges we've already added to avoid duplicates
+        let mut added_edges: AHashSet<(String, String)> = AHashSet::new();
+
+        // Process edges
+        for edge in self.graph.edge_references() {
+            let src_name = &self.graph[edge.source()].name;
+            let tgt_name = &self.graph[edge.target()].name;
+            let src_in = collapse_set.contains(src_name.as_str());
+            let tgt_in = collapse_set.contains(tgt_name.as_str());
+            let data = edge.weight();
+
+            if src_in && tgt_in {
+                // Internal edge — drop
+                continue;
+            }
+
+            let actual_src = if src_in { name } else { src_name.as_str() };
+            let actual_tgt = if tgt_in { name } else { tgt_name.as_str() };
+
+            // Skip self-loops
+            if actual_src == actual_tgt {
+                continue;
+            }
+
+            let edge_key = (actual_src.to_string(), actual_tgt.to_string());
+            if added_edges.contains(&edge_key) {
+                continue;
+            }
+
+            new_dag.add_edge(actual_src, actual_tgt, Some(data.weight), data.label.clone())?;
+            added_edges.insert(edge_key);
+        }
+
+        Ok(new_dag)
+    }
+}
+
+impl<P> DAG<P> {
+    /// Compute the dominator tree rooted at the given node.
+    ///
+    /// Returns a list of (node, immediate_dominator) pairs.
+    /// The root node maps to itself.
+    pub fn dominator_tree(&self, root: &str) -> Result<Vec<(String, String)>, DagronError> {
+        let root_idx = self.resolve_name(root)?;
+        let topo_order = algorithms::topological_sort_kahn(&self.graph)
+            .map_err(|e| DagronError::Graph(e.message))?;
+        let idom = algorithms::immediate_dominators(&self.graph, root_idx, &topo_order);
+
+        let mut result: Vec<(String, String)> = idom
+            .iter()
+            .map(|(&node, &dom)| {
+                (
+                    self.graph[node].name.clone(),
+                    self.graph[dom].name.clone(),
+                )
+            })
+            .collect();
+
+        // Sort for deterministic output
+        result.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(result)
     }
 }
