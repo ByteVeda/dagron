@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use dagron_core::{DagronError, DAG};
 
 fn diamond_dag() -> DAG {
@@ -185,4 +187,83 @@ fn to_mermaid_with_labels() {
 
     let mermaid = dag.to_mermaid();
     assert!(mermaid.contains("x -->|\"depends\"| y"));
+}
+
+// --- Bincode round-trip tests ---
+
+#[test]
+fn bincode_round_trip_empty() {
+    let dag: DAG = DAG::new();
+    let bytes = dag.to_bincode(|_| None).unwrap();
+    let dag2: DAG = DAG::from_bincode(&bytes, |_| ()).unwrap();
+    assert_eq!(dag2.node_count(), 0);
+    assert_eq!(dag2.edge_count(), 0);
+}
+
+#[test]
+fn bincode_round_trip_diamond() {
+    let dag = diamond_dag();
+    let bytes = dag.to_bincode(|_| None).unwrap();
+    let dag2: DAG = DAG::from_bincode(&bytes, |_| ()).unwrap();
+
+    assert_eq!(dag2.node_count(), 4);
+    assert_eq!(dag2.edge_count(), 4);
+    assert!(dag2.has_edge("a", "b").unwrap());
+    assert!(dag2.has_edge("a", "c").unwrap());
+    assert!(dag2.has_edge("b", "d").unwrap());
+    assert!(dag2.has_edge("c", "d").unwrap());
+}
+
+#[test]
+fn bincode_round_trip_with_payloads() {
+    let mut dag: DAG<i32> = DAG::new();
+    dag.add_node("a".into(), 10).unwrap();
+    dag.add_node("b".into(), 20).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+
+    let bytes = dag
+        .to_bincode(|p| Some(serde_json::Value::Number((*p).into())))
+        .unwrap();
+
+    let dag2: DAG<i32> = DAG::from_bincode(&bytes, |v| {
+        v.and_then(|val| val.as_i64())
+            .map(|n| n as i32)
+            .unwrap_or(0)
+    })
+    .unwrap();
+
+    assert_eq!(*dag2.get_payload("a").unwrap(), 10);
+    assert_eq!(*dag2.get_payload("b").unwrap(), 20);
+}
+
+#[test]
+fn bincode_preserves_edge_weights_and_labels() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", Some(3.5), Some("dep".into())).unwrap();
+
+    let bytes = dag.to_bincode(|_| None).unwrap();
+    let dag2: DAG = DAG::from_bincode(&bytes, |_| ()).unwrap();
+
+    let sg = dag2.to_serializable(|_| None);
+    assert_eq!(sg.edges.len(), 1);
+    assert!((sg.edges[0].weight - 3.5).abs() < f64::EPSILON);
+    assert_eq!(sg.edges[0].label.as_deref(), Some("dep"));
+}
+
+#[test]
+fn bincode_streaming_round_trip() {
+    let dag = diamond_dag();
+
+    let mut buf = Vec::new();
+    dag.to_bincode_writer(&mut buf, |_| None).unwrap();
+
+    let cursor = Cursor::new(&buf);
+    let dag2: DAG = DAG::from_bincode_reader(cursor, |_| ()).unwrap();
+
+    assert_eq!(dag2.node_count(), 4);
+    assert_eq!(dag2.edge_count(), 4);
+    assert!(dag2.has_edge("a", "b").unwrap());
+    assert!(dag2.has_edge("c", "d").unwrap());
 }

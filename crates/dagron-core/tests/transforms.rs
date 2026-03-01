@@ -283,6 +283,181 @@ fn merge_with_custom_resolver() {
 
 // --- Original DAG is unmodified ---
 
+// --- Reverse ---
+
+#[test]
+fn reverse_diamond() {
+    let dag = diamond_dag();
+    let rev = dag.reverse();
+    assert_eq!(rev.node_count(), 4);
+    assert_eq!(rev.edge_count(), 4);
+    // Original: a->b, a->c, b->d, c->d
+    // Reversed: b->a, c->a, d->b, d->c
+    assert!(rev.has_edge("b", "a").unwrap());
+    assert!(rev.has_edge("c", "a").unwrap());
+    assert!(rev.has_edge("d", "b").unwrap());
+    assert!(rev.has_edge("d", "c").unwrap());
+    // Original edges should not exist
+    assert!(!rev.has_edge("a", "b").unwrap());
+    assert!(!rev.has_edge("a", "c").unwrap());
+}
+
+#[test]
+fn reverse_empty() {
+    let dag: DAG = DAG::new();
+    let rev = dag.reverse();
+    assert_eq!(rev.node_count(), 0);
+    assert_eq!(rev.edge_count(), 0);
+}
+
+#[test]
+fn reverse_preserves_payloads() {
+    let mut dag: DAG<i32> = DAG::new();
+    dag.add_node("a".into(), 10).unwrap();
+    dag.add_node("b".into(), 20).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+
+    let rev = dag.reverse();
+    assert_eq!(*rev.get_payload("a").unwrap(), 10);
+    assert_eq!(*rev.get_payload("b").unwrap(), 20);
+    assert!(rev.has_edge("b", "a").unwrap());
+}
+
+#[test]
+fn reverse_preserves_edge_weights() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", Some(3.5), Some("dep".into())).unwrap();
+
+    let rev = dag.reverse();
+    let sg = rev.to_serializable(|_| None);
+    let edge = sg.edges.iter().find(|e| e.from == "y" && e.to == "x").unwrap();
+    assert!((edge.weight - 3.5).abs() < f64::EPSILON);
+    assert_eq!(edge.label.as_deref(), Some("dep"));
+}
+
+// --- Collapse ---
+
+#[test]
+fn collapse_basic() {
+    let dag = diamond_dag();
+    // Collapse b and c into "bc"
+    let collapsed = dag.collapse(&["b", "c"], "bc", ()).unwrap();
+    assert_eq!(collapsed.node_count(), 3); // a, bc, d
+    assert!(collapsed.has_node("a"));
+    assert!(collapsed.has_node("bc"));
+    assert!(collapsed.has_node("d"));
+    assert!(!collapsed.has_node("b"));
+    assert!(!collapsed.has_node("c"));
+    assert!(collapsed.has_edge("a", "bc").unwrap());
+    assert!(collapsed.has_edge("bc", "d").unwrap());
+}
+
+#[test]
+fn collapse_preserves_payloads() {
+    let mut dag: DAG<i32> = DAG::new();
+    dag.add_node("a".into(), 10).unwrap();
+    dag.add_node("b".into(), 20).unwrap();
+    dag.add_node("c".into(), 30).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+    dag.add_edge("b", "c", None, None).unwrap();
+
+    let collapsed = dag.collapse(&["b"], "merged", 99).unwrap();
+    assert_eq!(*collapsed.get_payload("a").unwrap(), 10);
+    assert_eq!(*collapsed.get_payload("merged").unwrap(), 99);
+    assert_eq!(*collapsed.get_payload("c").unwrap(), 30);
+}
+
+#[test]
+fn collapse_error_on_missing_node() {
+    let dag = diamond_dag();
+    let result = dag.collapse(&["b", "nonexistent"], "bc", ());
+    assert!(result.is_err());
+    match result {
+        Err(DagronError::NodeNotFound(name)) => assert_eq!(name, "nonexistent"),
+        Err(other) => panic!("Expected NodeNotFound, got: {other:?}"),
+        Ok(_) => panic!("Expected NodeNotFound error, got Ok"),
+    }
+}
+
+#[test]
+fn collapse_error_on_name_collision() {
+    let dag = diamond_dag();
+    // Try to collapse b, c into "a" — but "a" already exists and survives
+    let result = dag.collapse(&["b", "c"], "a", ());
+    assert!(result.is_err());
+}
+
+// --- Dominator tree ---
+
+#[test]
+fn dominator_tree_diamond() {
+    let dag = diamond_dag();
+    let dom = dag.dominator_tree("a").unwrap();
+    // a->a (root), b->a, c->a, d->a
+    let dom_map: std::collections::HashMap<&str, &str> = dom
+        .iter()
+        .map(|(n, d)| (n.as_str(), d.as_str()))
+        .collect();
+    assert_eq!(dom_map["a"], "a");
+    assert_eq!(dom_map["b"], "a");
+    assert_eq!(dom_map["c"], "a");
+    assert_eq!(dom_map["d"], "a"); // both paths through a
+}
+
+#[test]
+fn dominator_tree_linear() {
+    let mut dag = DAG::new();
+    dag.add_node("a".into(), ()).unwrap();
+    dag.add_node("b".into(), ()).unwrap();
+    dag.add_node("c".into(), ()).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+    dag.add_edge("b", "c", None, None).unwrap();
+
+    let dom = dag.dominator_tree("a").unwrap();
+    let dom_map: std::collections::HashMap<&str, &str> = dom
+        .iter()
+        .map(|(n, d)| (n.as_str(), d.as_str()))
+        .collect();
+    assert_eq!(dom_map["a"], "a");
+    assert_eq!(dom_map["b"], "a");
+    assert_eq!(dom_map["c"], "b");
+}
+
+#[test]
+fn dominator_tree_multiple_paths() {
+    // a -> b -> d
+    // a -> c -> d
+    // b -> e
+    // d -> e
+    let mut dag = DAG::new();
+    dag.add_node("a".into(), ()).unwrap();
+    dag.add_node("b".into(), ()).unwrap();
+    dag.add_node("c".into(), ()).unwrap();
+    dag.add_node("d".into(), ()).unwrap();
+    dag.add_node("e".into(), ()).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+    dag.add_edge("a", "c", None, None).unwrap();
+    dag.add_edge("b", "d", None, None).unwrap();
+    dag.add_edge("c", "d", None, None).unwrap();
+    dag.add_edge("b", "e", None, None).unwrap();
+    dag.add_edge("d", "e", None, None).unwrap();
+
+    let dom = dag.dominator_tree("a").unwrap();
+    let dom_map: std::collections::HashMap<&str, &str> = dom
+        .iter()
+        .map(|(n, d)| (n.as_str(), d.as_str()))
+        .collect();
+    assert_eq!(dom_map["a"], "a");
+    assert_eq!(dom_map["b"], "a");
+    assert_eq!(dom_map["c"], "a");
+    assert_eq!(dom_map["d"], "a"); // d reachable via b and c, both from a
+    assert_eq!(dom_map["e"], "a"); // e reachable via b and d, both from a
+}
+
+// --- Original DAG is unmodified ---
+
 #[test]
 fn transforms_do_not_modify_original() {
     let mut dag = diamond_dag();
