@@ -1,0 +1,188 @@
+use dagron_core::{DagronError, DAG};
+
+fn diamond_dag() -> DAG {
+    let mut dag = DAG::new();
+    dag.add_node("a".into(), ()).unwrap();
+    dag.add_node("b".into(), ()).unwrap();
+    dag.add_node("c".into(), ()).unwrap();
+    dag.add_node("d".into(), ()).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+    dag.add_edge("a", "c", None, None).unwrap();
+    dag.add_edge("b", "d", None, None).unwrap();
+    dag.add_edge("c", "d", None, None).unwrap();
+    dag
+}
+
+// --- JSON round-trip tests ---
+
+#[test]
+fn json_round_trip_empty() {
+    let dag: DAG = DAG::new();
+    let json = dag.to_json(|_| None).unwrap();
+    let dag2: DAG = DAG::from_json(&json, |_| ()).unwrap();
+    assert_eq!(dag2.node_count(), 0);
+    assert_eq!(dag2.edge_count(), 0);
+}
+
+#[test]
+fn json_round_trip_diamond() {
+    let dag = diamond_dag();
+    let json = dag.to_json(|_| None).unwrap();
+    let dag2: DAG = DAG::from_json(&json, |_| ()).unwrap();
+
+    assert_eq!(dag2.node_count(), 4);
+    assert_eq!(dag2.edge_count(), 4);
+    assert!(dag2.has_node("a"));
+    assert!(dag2.has_node("b"));
+    assert!(dag2.has_node("c"));
+    assert!(dag2.has_node("d"));
+    assert!(dag2.has_edge("a", "b").unwrap());
+    assert!(dag2.has_edge("a", "c").unwrap());
+    assert!(dag2.has_edge("b", "d").unwrap());
+    assert!(dag2.has_edge("c", "d").unwrap());
+}
+
+#[test]
+fn json_round_trip_edge_weights() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", Some(3.5), None).unwrap();
+
+    let json = dag.to_json(|_| None).unwrap();
+    let dag2: DAG = DAG::from_json(&json, |_| ()).unwrap();
+
+    // Verify weight preserved via serializable
+    let sg = dag2.to_serializable(|_| None);
+    assert_eq!(sg.edges.len(), 1);
+    assert!((sg.edges[0].weight - 3.5).abs() < f64::EPSILON);
+}
+
+#[test]
+fn json_round_trip_edge_labels() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", None, Some("depends_on".to_string())).unwrap();
+
+    let json = dag.to_json(|_| None).unwrap();
+    let dag2: DAG = DAG::from_json(&json, |_| ()).unwrap();
+
+    let sg = dag2.to_serializable(|_| None);
+    assert_eq!(sg.edges[0].label.as_deref(), Some("depends_on"));
+}
+
+#[test]
+fn json_payload_callback() {
+    let mut dag: DAG<i32> = DAG::new();
+    dag.add_node("a".into(), 10).unwrap();
+    dag.add_node("b".into(), 20).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+
+    let json = dag
+        .to_json(|p| Some(serde_json::Value::Number((*p).into())))
+        .unwrap();
+
+    let dag2: DAG<i32> = DAG::from_json(&json, |v| {
+        v.and_then(|val| val.as_i64())
+            .map(|n| n as i32)
+            .unwrap_or(0)
+    })
+    .unwrap();
+
+    assert_eq!(*dag2.get_payload("a").unwrap(), 10);
+    assert_eq!(*dag2.get_payload("b").unwrap(), 20);
+}
+
+#[test]
+fn json_no_payload_skips() {
+    let mut dag: DAG<i32> = DAG::new();
+    dag.add_node("a".into(), 42).unwrap();
+
+    let json = dag.to_json(|_| None).unwrap();
+    // Payload field should not appear in JSON
+    assert!(!json.contains("payload"));
+}
+
+#[test]
+fn from_json_invalid() {
+    let result: Result<DAG, _> = DAG::from_json("not valid json {{{", |_| ());
+    match result {
+        Err(DagronError::Graph(msg)) => assert!(msg.contains("JSON deserialization failed")),
+        Err(other) => panic!("Expected Graph error, got: {other:?}"),
+        Ok(_) => panic!("Expected error for invalid JSON"),
+    }
+}
+
+// --- DOT tests ---
+
+#[test]
+fn to_dot_diamond() {
+    let dag = diamond_dag();
+    let dot = dag.to_dot();
+
+    assert!(dot.starts_with("digraph {"));
+    assert!(dot.ends_with('}'));
+    assert!(dot.contains("\"a\""));
+    assert!(dot.contains("\"b\""));
+    assert!(dot.contains("\"c\""));
+    assert!(dot.contains("\"d\""));
+    assert!(dot.contains("\"a\" -> \"b\""));
+    assert!(dot.contains("\"a\" -> \"c\""));
+    assert!(dot.contains("\"b\" -> \"d\""));
+    assert!(dot.contains("\"c\" -> \"d\""));
+}
+
+#[test]
+fn to_dot_with_labels() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", None, Some("dep".into())).unwrap();
+
+    let dot = dag.to_dot();
+    assert!(dot.contains("label=\"dep\""));
+}
+
+#[test]
+fn to_dot_with_node_attrs() {
+    let dag = diamond_dag();
+    let dot = dag.to_dot_with(|name, _| {
+        if name == "a" {
+            Some("shape=box, color=red".to_string())
+        } else {
+            None
+        }
+    });
+
+    assert!(dot.contains("\"a\" [shape=box, color=red]"));
+    // Other nodes should not have attributes
+    assert!(dot.contains("\"b\";"));
+}
+
+// --- Mermaid tests ---
+
+#[test]
+fn to_mermaid_diamond() {
+    let dag = diamond_dag();
+    let mermaid = dag.to_mermaid();
+
+    assert!(mermaid.starts_with("graph TD\n"));
+    assert!(mermaid.contains("a[\"a\"]"));
+    assert!(mermaid.contains("b[\"b\"]"));
+    assert!(mermaid.contains("a --> b"));
+    assert!(mermaid.contains("a --> c"));
+    assert!(mermaid.contains("b --> d"));
+    assert!(mermaid.contains("c --> d"));
+}
+
+#[test]
+fn to_mermaid_with_labels() {
+    let mut dag = DAG::new();
+    dag.add_node("x".into(), ()).unwrap();
+    dag.add_node("y".into(), ()).unwrap();
+    dag.add_edge("x", "y", None, Some("depends".into())).unwrap();
+
+    let mermaid = dag.to_mermaid();
+    assert!(mermaid.contains("x -->|\"depends\"| y"));
+}

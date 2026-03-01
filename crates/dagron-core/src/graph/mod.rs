@@ -2,6 +2,7 @@ pub(crate) mod cache;
 pub mod construction;
 pub mod introspection;
 pub mod scheduling;
+pub mod serialization;
 pub mod toposort;
 pub mod validation;
 
