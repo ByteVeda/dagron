@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::io;
 
 use petgraph::visit::{EdgeRef, IntoEdgeReferences, IntoNodeIdentifiers};
 use serde::{Deserialize, Serialize};
@@ -27,6 +28,23 @@ pub struct SerializableEdge {
 pub struct SerializableGraph {
     pub nodes: Vec<SerializableNode>,
     pub edges: Vec<SerializableEdge>,
+}
+
+/// Bincode-friendly node: payload stored as a JSON string to avoid
+/// bincode's limitation with `serde_json::Value::deserialize_any`.
+#[derive(Serialize, Deserialize)]
+struct BincodeNode {
+    name: String,
+    payload_json: Option<String>,
+}
+
+/// Bincode-friendly edge.
+#[derive(Serialize, Deserialize)]
+struct BincodeEdge {
+    from: String,
+    to: String,
+    weight: f64,
+    label: Option<String>,
 }
 
 impl<P> DAG<P> {
@@ -169,5 +187,118 @@ impl<P> DAG<P> {
             }
         }
         out
+    }
+
+    /// Serialize the DAG to a streaming binary format.
+    ///
+    /// Format: node_count (u64), then each node (name + payload as JSON string),
+    /// then edge_count (u64), then each edge — all encoded via bincode individually.
+    /// Payloads are stored as `Option<String>` (JSON-encoded) to avoid bincode's
+    /// limitation with `serde_json::Value::deserialize_any`.
+    pub fn to_bincode_writer<W, F>(
+        &self,
+        mut writer: W,
+        payload_fn: F,
+    ) -> Result<(), DagronError>
+    where
+        W: io::Write,
+        F: Fn(&P) -> Option<serde_json::Value>,
+    {
+        let sg = self.to_serializable(payload_fn);
+
+        let node_count = sg.nodes.len() as u64;
+        bincode::serialize_into(&mut writer, &node_count)
+            .map_err(|e| DagronError::Graph(format!("Bincode write error: {e}")))?;
+
+        for node in &sg.nodes {
+            let bc_node = BincodeNode {
+                name: node.name.clone(),
+                payload_json: node
+                    .payload
+                    .as_ref()
+                    .map(|v| serde_json::to_string(v).unwrap_or_default()),
+            };
+            bincode::serialize_into(&mut writer, &bc_node)
+                .map_err(|e| DagronError::Graph(format!("Bincode write error: {e}")))?;
+        }
+
+        let edge_count = sg.edges.len() as u64;
+        bincode::serialize_into(&mut writer, &edge_count)
+            .map_err(|e| DagronError::Graph(format!("Bincode write error: {e}")))?;
+
+        for edge in &sg.edges {
+            let bc_edge = BincodeEdge {
+                from: edge.from.clone(),
+                to: edge.to.clone(),
+                weight: edge.weight,
+                label: edge.label.clone(),
+            };
+            bincode::serialize_into(&mut writer, &bc_edge)
+                .map_err(|e| DagronError::Graph(format!("Bincode write error: {e}")))?;
+        }
+
+        Ok(())
+    }
+
+    /// Deserialize a DAG from a streaming binary format.
+    ///
+    /// Reads nodes and edges one-by-one, building the DAG incrementally
+    /// without materializing a full intermediate SerializableGraph.
+    pub fn from_bincode_reader<R, F>(
+        mut reader: R,
+        payload_fn: F,
+    ) -> Result<Self, DagronError>
+    where
+        R: io::Read,
+        F: Fn(Option<&serde_json::Value>) -> P,
+    {
+        let node_count: u64 = bincode::deserialize_from(&mut reader)
+            .map_err(|e| DagronError::Graph(format!("Bincode read error: {e}")))?;
+
+        let mut dag = DAG::new();
+
+        for _ in 0..node_count {
+            let bc_node: BincodeNode = bincode::deserialize_from(&mut reader)
+                .map_err(|e| DagronError::Graph(format!("Bincode read error: {e}")))?;
+            let json_val: Option<serde_json::Value> = bc_node
+                .payload_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str(s).ok());
+            let payload = payload_fn(json_val.as_ref());
+            dag.add_node(bc_node.name, payload)?;
+        }
+
+        let edge_count: u64 = bincode::deserialize_from(&mut reader)
+            .map_err(|e| DagronError::Graph(format!("Bincode read error: {e}")))?;
+
+        for _ in 0..edge_count {
+            let bc_edge: BincodeEdge = bincode::deserialize_from(&mut reader)
+                .map_err(|e| DagronError::Graph(format!("Bincode read error: {e}")))?;
+            dag.add_edge(&bc_edge.from, &bc_edge.to, Some(bc_edge.weight), bc_edge.label)?;
+        }
+
+        Ok(dag)
+    }
+
+    /// Serialize the DAG to a binary (bincode) byte vector.
+    ///
+    /// Delegates to the streaming writer with a Vec<u8> buffer.
+    pub fn to_bincode<F>(&self, payload_fn: F) -> Result<Vec<u8>, DagronError>
+    where
+        F: Fn(&P) -> Option<serde_json::Value>,
+    {
+        let mut buf = Vec::new();
+        self.to_bincode_writer(&mut buf, payload_fn)?;
+        Ok(buf)
+    }
+
+    /// Deserialize a DAG from a binary (bincode) byte slice.
+    ///
+    /// Delegates to the streaming reader with a cursor.
+    pub fn from_bincode<F>(bytes: &[u8], payload_fn: F) -> Result<Self, DagronError>
+    where
+        F: Fn(Option<&serde_json::Value>) -> P,
+    {
+        Self::from_bincode_reader(io::Cursor::new(bytes), payload_fn)
     }
 }

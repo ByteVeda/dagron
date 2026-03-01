@@ -123,10 +123,11 @@ impl<P> DAG<P> {
     /// Get all root nodes (nodes with no incoming edges).
     pub fn roots(&self) -> Vec<NodeId> {
         {
-            let mut cache = self.cache.lock().unwrap();
+            let cache = self.cache.read().unwrap();
             if cache.gen() == self.generation {
                 if let Some(cached) = cache.roots().cloned() {
-                    cache.record_hit();
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
                     return cached;
                 }
             }
@@ -146,7 +147,7 @@ impl<P> DAG<P> {
             })
             .collect();
         {
-            let mut cache = self.cache.lock().unwrap();
+            let mut cache = self.cache.write().unwrap();
             cache.record_miss();
             cache.set_gen(self.generation);
             cache.set_roots(result.clone());
@@ -157,10 +158,11 @@ impl<P> DAG<P> {
     /// Get all leaf nodes (nodes with no outgoing edges).
     pub fn leaves(&self) -> Vec<NodeId> {
         {
-            let mut cache = self.cache.lock().unwrap();
+            let cache = self.cache.read().unwrap();
             if cache.gen() == self.generation {
                 if let Some(cached) = cache.leaves().cloned() {
-                    cache.record_hit();
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
                     return cached;
                 }
             }
@@ -180,7 +182,7 @@ impl<P> DAG<P> {
             })
             .collect();
         {
-            let mut cache = self.cache.lock().unwrap();
+            let mut cache = self.cache.write().unwrap();
             cache.record_miss();
             cache.set_gen(self.generation);
             cache.set_leaves(result.clone());
