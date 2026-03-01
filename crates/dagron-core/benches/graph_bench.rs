@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use dagron_core::{DAG, NodeData, EdgeData};
+use dagron_core::DAG;
 
 fn build_chain(n: usize) -> DAG {
     let mut dag = DAG::new();

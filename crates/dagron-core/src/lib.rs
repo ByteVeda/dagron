@@ -4,6 +4,8 @@ pub mod graph;
 pub mod node;
 pub mod types;
 
+pub use algorithms::reachability::ReachabilityIndex;
+pub use algorithms::subgraph::SubgraphDirection;
 pub use errors::DagronError;
 pub use graph::scheduling::{ExecutionPlanResult, ExecutionStepResult, ScheduledNodeId};
 pub use graph::serialization::{SerializableEdge, SerializableGraph, SerializableNode};

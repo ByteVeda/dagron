@@ -3,11 +3,15 @@ pub mod dag;
 pub mod errors;
 pub mod incremental;
 pub mod introspection;
+pub mod matching;
 pub mod node;
+pub mod paths;
 pub mod payload;
 pub mod protocols;
+pub mod reachability;
 pub mod scheduling;
 pub mod serialization;
+pub mod subgraph;
 pub mod toposort;
 pub mod transforms;
 pub mod validation;
@@ -22,6 +26,7 @@ fn dagron(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<scheduling::PyScheduledNode>()?;
     m.add_class::<scheduling::PyExecutionStep>()?;
     m.add_class::<scheduling::PyExecutionPlan>()?;
+    m.add_class::<reachability::PyReachabilityIndex>()?;
 
     // Register exception hierarchy
     m.add("DagronError", m.py().get_type::<errors::DagronError>())?;

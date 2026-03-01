@@ -165,4 +165,14 @@ impl PyDAG {
     pub fn remove_edge(&mut self, from_node: &str, to_node: &str) -> PyResult<()> {
         self.inner.remove_edge(from_node, to_node).map_err(errors::into_pyerr)
     }
+
+    /// Create a new DAGBuilder for fluent DAG construction.
+    ///
+    /// Returns:
+    ///     A new DAGBuilder instance.
+    #[staticmethod]
+    pub fn builder(py: Python<'_>) -> PyResult<PyObject> {
+        let m = py.import("dagron.builder")?;
+        m.getattr("DAGBuilder")?.call0().map(|o| o.unbind())
+    }
 }

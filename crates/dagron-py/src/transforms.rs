@@ -5,7 +5,7 @@ use crate::errors;
 use crate::payload::PyNodePayload;
 
 /// Clone a PyNodePayload, using the GIL to clone Py<PyAny> references.
-fn clone_payload(py: Python<'_>, p: &PyNodePayload) -> PyNodePayload {
+pub(crate) fn clone_payload(py: Python<'_>, p: &PyNodePayload) -> PyNodePayload {
     PyNodePayload {
         payload: p.payload.as_ref().map(|obj| obj.clone_ref(py)),
         metadata: p.metadata.as_ref().map(|obj| obj.clone_ref(py)),
@@ -13,7 +13,7 @@ fn clone_payload(py: Python<'_>, p: &PyNodePayload) -> PyNodePayload {
 }
 
 /// Clone all nodes from a source DAG into a new DAG.
-fn clone_nodes(
+pub(crate) fn clone_nodes(
     py: Python<'_>,
     src: &dagron_core::DAG<PyNodePayload>,
     dst: &mut dagron_core::DAG<PyNodePayload>,
@@ -28,7 +28,7 @@ fn clone_nodes(
 
 /// Clone all edges from a source DAG into a destination DAG.
 /// Only copies edges where both endpoints exist in dst.
-fn clone_edges(
+pub(crate) fn clone_edges(
     src: &dagron_core::DAG<PyNodePayload>,
     dst: &mut dagron_core::DAG<PyNodePayload>,
 ) -> PyResult<()> {

@@ -31,6 +31,35 @@ impl PyDAG {
         Ok(nodes.into_iter().map(PyNodeId::from).collect())
     }
 
+    /// Enumerate all valid topological orderings via backtracking.
+    ///
+    /// WARNING: The number of orderings can be factorial. Always use `limit`
+    /// for non-trivial graphs.
+    ///
+    /// Args:
+    ///     limit: Maximum number of orderings to return (None = unlimited).
+    ///
+    /// Returns:
+    ///     List of orderings, each being a list of NodeId.
+    ///
+    /// Raises:
+    ///     CycleError: If the graph contains cycles.
+    #[pyo3(signature = (limit=None))]
+    pub fn all_topological_orderings(
+        &self,
+        py: Python<'_>,
+        limit: Option<usize>,
+    ) -> PyResult<Vec<Vec<PyNodeId>>> {
+        let inner_ref = &self.inner;
+        let orderings = py
+            .allow_threads(|| inner_ref.all_topological_orderings(limit))
+            .map_err(errors::into_pyerr)?;
+        Ok(orderings
+            .into_iter()
+            .map(|order| order.into_iter().map(PyNodeId::from).collect())
+            .collect())
+    }
+
     /// Return nodes grouped by topological level.
     /// Level 0 = roots, Level 1 = nodes depending only on roots, etc.
     ///

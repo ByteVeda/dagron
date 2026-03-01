@@ -70,6 +70,30 @@ impl<P> DAG<P> {
         result
     }
 
+    /// Enumerate all valid topological orderings via backtracking.
+    /// Stops after `limit` orderings (None = unlimited, WARNING: can be factorial).
+    pub fn all_topological_orderings(
+        &self,
+        limit: Option<usize>,
+    ) -> Result<Vec<Vec<NodeId>>, DagronError> {
+        algorithms::all_topological_orderings(&self.graph, limit)
+            .map_err(|e| DagronError::Cycle(e.message))
+            .map(|orderings| {
+                orderings
+                    .into_iter()
+                    .map(|order| {
+                        order
+                            .into_iter()
+                            .map(|idx| NodeId {
+                                index: idx.index() as u32,
+                                name: self.graph[idx].name.clone(),
+                            })
+                            .collect()
+                    })
+                    .collect()
+            })
+    }
+
     /// Return nodes grouped by topological level.
     /// Level 0 = roots, Level 1 = nodes depending only on roots, etc.
     pub fn topological_levels(&self) -> Result<Vec<Vec<NodeId>>, DagronError> {

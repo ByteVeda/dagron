@@ -176,6 +176,108 @@ pub fn topological_levels<P>(
     }
 }
 
+/// Enumerate all valid topological orderings via backtracking.
+/// Stops after `limit` orderings (None = unlimited, WARNING: can be factorial).
+pub fn all_topological_orderings<P>(
+    graph: &InternalGraph<P>,
+    limit: Option<usize>,
+) -> Result<Vec<Vec<InternalNodeIndex>>, CycleInfo> {
+    let node_count = graph.node_count();
+    let mut in_degree: ahash::AHashMap<InternalNodeIndex, usize> =
+        ahash::AHashMap::with_capacity(node_count);
+
+    for node in graph.node_identifiers() {
+        in_degree.entry(node).or_insert(0);
+        for edge in graph.edges(node) {
+            *in_degree.entry(edge.target()).or_insert(0) += 1;
+        }
+    }
+
+    // Check for cycles: if no zero-degree nodes and graph is non-empty
+    let zero_count = in_degree.values().filter(|&&d| d == 0).count();
+    if node_count > 0 && zero_count == 0 {
+        return Err(CycleInfo {
+            message: "Graph contains a cycle".to_string(),
+        });
+    }
+
+    let mut results = Vec::new();
+    let mut current = Vec::new();
+    all_topo_backtrack(graph, &mut in_degree, &mut current, &mut results, limit);
+
+    // Verify completeness (cycle detection for partially valid graphs)
+    if !results.is_empty() && results[0].len() != node_count {
+        return Err(CycleInfo {
+            message: "Graph contains a cycle".to_string(),
+        });
+    }
+
+    Ok(results)
+}
+
+fn all_topo_backtrack<P>(
+    graph: &InternalGraph<P>,
+    in_degree: &mut ahash::AHashMap<InternalNodeIndex, usize>,
+    current: &mut Vec<InternalNodeIndex>,
+    results: &mut Vec<Vec<InternalNodeIndex>>,
+    limit: Option<usize>,
+) {
+    if let Some(lim) = limit {
+        if results.len() >= lim {
+            return;
+        }
+    }
+
+    // Find all zero-in-degree nodes not yet in current
+    let mut candidates: Vec<InternalNodeIndex> = in_degree
+        .iter()
+        .filter(|(_, &deg)| deg == 0)
+        .map(|(&node, _)| node)
+        .filter(|node| !current.contains(node))
+        .collect();
+    // Sort by name for deterministic ordering
+    candidates.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
+
+    if candidates.is_empty() {
+        if !current.is_empty() {
+            results.push(current.clone());
+        }
+        return;
+    }
+
+    for candidate in candidates {
+        if let Some(lim) = limit {
+            if results.len() >= lim {
+                return;
+            }
+        }
+
+        // Pick this candidate
+        current.push(candidate);
+
+        // Decrement in-degrees of successors
+        let mut neighbors: Vec<InternalNodeIndex> =
+            graph.edges(candidate).map(|e| e.target()).collect();
+        neighbors.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
+
+        for &neighbor in &neighbors {
+            *in_degree.get_mut(&neighbor).unwrap() -= 1;
+        }
+
+        // Remove candidate from in_degree map temporarily
+        let old_deg = in_degree.remove(&candidate).unwrap();
+
+        all_topo_backtrack(graph, in_degree, current, results, limit);
+
+        // Restore
+        in_degree.insert(candidate, old_deg);
+        for &neighbor in &neighbors {
+            *in_degree.get_mut(&neighbor).unwrap() += 1;
+        }
+        current.pop();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -248,5 +350,64 @@ mod tests {
         assert!(topological_sort_kahn(&g).unwrap().is_empty());
         assert!(topological_sort_dfs(&g).unwrap().is_empty());
         assert!(topological_levels(&g).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_all_orderings_linear() {
+        let mut g: InternalGraph = StableGraph::default();
+        let a = g.add_node(make_node("a"));
+        let b = g.add_node(make_node("b"));
+        let c = g.add_node(make_node("c"));
+        g.add_edge(a, b, make_edge());
+        g.add_edge(b, c, make_edge());
+
+        let orderings = all_topological_orderings(&g, None).unwrap();
+        assert_eq!(orderings.len(), 1);
+        assert_eq!(orderings[0], vec![a, b, c]);
+    }
+
+    #[test]
+    fn test_all_orderings_diamond() {
+        let mut g: InternalGraph = StableGraph::default();
+        let a = g.add_node(make_node("a"));
+        let b = g.add_node(make_node("b"));
+        let c = g.add_node(make_node("c"));
+        let d = g.add_node(make_node("d"));
+        g.add_edge(a, b, make_edge());
+        g.add_edge(a, c, make_edge());
+        g.add_edge(b, d, make_edge());
+        g.add_edge(c, d, make_edge());
+
+        let orderings = all_topological_orderings(&g, None).unwrap();
+        assert_eq!(orderings.len(), 2);
+    }
+
+    #[test]
+    fn test_all_orderings_independent() {
+        let mut g: InternalGraph = StableGraph::default();
+        let _a = g.add_node(make_node("a"));
+        let _b = g.add_node(make_node("b"));
+        let _c = g.add_node(make_node("c"));
+
+        let orderings = all_topological_orderings(&g, None).unwrap();
+        assert_eq!(orderings.len(), 6); // 3! = 6
+    }
+
+    #[test]
+    fn test_all_orderings_with_limit() {
+        let mut g: InternalGraph = StableGraph::default();
+        let _a = g.add_node(make_node("a"));
+        let _b = g.add_node(make_node("b"));
+        let _c = g.add_node(make_node("c"));
+
+        let orderings = all_topological_orderings(&g, Some(2)).unwrap();
+        assert_eq!(orderings.len(), 2);
+    }
+
+    #[test]
+    fn test_all_orderings_empty() {
+        let g: InternalGraph = StableGraph::default();
+        let orderings = all_topological_orderings(&g, None).unwrap();
+        assert!(orderings.is_empty());
     }
 }
