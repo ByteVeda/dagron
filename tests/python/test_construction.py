@@ -1,10 +1,11 @@
 import pytest
+
 from dagron import (
-    NodeId,
-    DuplicateNodeError,
-    NodeNotFoundError,
-    EdgeNotFoundError,
     CycleError,
+    DuplicateNodeError,
+    EdgeNotFoundError,
+    NodeId,
+    NodeNotFoundError,
 )
 
 

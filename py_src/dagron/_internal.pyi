@@ -1,6 +1,7 @@
 """Type stubs for dagron._internal (Rust extension module)."""
 
-from typing import Any, Callable, Iterator, Optional
+from collections.abc import Callable, Iterator
+from typing import Any, Literal
 
 class NodeId:
     """An immutable identifier for a node in the DAG."""
@@ -46,7 +47,7 @@ class ExecutionPlan:
     @property
     def estimated_makespan(self) -> float: ...
     @property
-    def critical_path(self) -> Optional[list[NodeId]]: ...
+    def critical_path(self) -> list[NodeId] | None: ...
     def __repr__(self) -> str: ...
 
 class ReachabilityIndex:
@@ -157,8 +158,8 @@ class DAG:
         self,
         from_node: str,
         to_node: str,
-        weight: Optional[float] = None,
-        label: Optional[str] = None,
+        weight: float | None = None,
+        label: str | None = None,
     ) -> None: ...
     def add_edges(
         self,
@@ -205,55 +206,55 @@ class DAG:
     def topological_sort_dfs(self) -> list[NodeId]: ...
     def topological_levels(self) -> list[list[NodeId]]: ...
     def all_topological_orderings(
-        self, limit: Optional[int] = None
+        self, limit: int | None = None
     ) -> list[list[NodeId]]: ...
     def iter_topological_sort(self) -> NodeIterator: ...
     def iter_topological_levels(self) -> NodeLevelIterator: ...
 
     # --- Priority sorting ---
     def topological_sort_priority(
-        self, priorities: Optional[dict[str, float]] = None
+        self, priorities: dict[str, float] | None = None
     ) -> list[NodeId]: ...
     def topological_levels_priority(
-        self, priorities: Optional[dict[str, float]] = None
+        self, priorities: dict[str, float] | None = None
     ) -> list[list[NodeId]]: ...
 
     # --- Scheduling ---
     def execution_plan(
-        self, costs: Optional[dict[str, float]] = None
+        self, costs: dict[str, float] | None = None
     ) -> ExecutionPlan: ...
     def execution_plan_constrained(
         self,
         max_workers: int,
-        costs: Optional[dict[str, float]] = None,
+        costs: dict[str, float] | None = None,
     ) -> ExecutionPlan: ...
     def critical_path(
-        self, costs: Optional[dict[str, float]] = None
+        self, costs: dict[str, float] | None = None
     ) -> tuple[list[NodeId], float]: ...
 
     # --- Serialization ---
     def to_json(
-        self, payload_serializer: Optional[Callable[[Any], Any]] = None
+        self, payload_serializer: Callable[[Any], Any] | None = None
     ) -> str: ...
     @classmethod
     def from_json(
         cls,
         json_str: str,
-        payload_deserializer: Optional[Callable[[Any], Any]] = None,
+        payload_deserializer: Callable[[Any], Any] | None = None,
     ) -> DAG: ...
     def to_dot(
         self,
-        node_attrs: Optional[Callable[[str, Any], Optional[str]]] = None,
+        node_attrs: Callable[[str, Any], str | None] | None = None,
     ) -> str: ...
     def to_mermaid(self) -> str: ...
     def to_bytes(
-        self, payload_serializer: Optional[Callable[[Any], Any]] = None
+        self, payload_serializer: Callable[[Any], Any] | None = None
     ) -> bytes: ...
     @classmethod
     def from_bytes(
         cls,
         data: bytes,
-        payload_deserializer: Optional[Callable[[Any], Any]] = None,
+        payload_deserializer: Callable[[Any], Any] | None = None,
     ) -> DAG: ...
 
     # --- Transforms ---
@@ -272,8 +273,8 @@ class DAG:
     def merge(
         self,
         other: DAG,
-        conflict: str = "keep_first",
-        conflict_resolver: Optional[Callable[[str, Any, Any], Any]] = None,
+        conflict: Literal["keep_first", "keep_second", "error"] = "keep_first",
+        conflict_resolver: Callable[[str, Any, Any], Any] | None = None,
     ) -> DAG: ...
 
     # --- Incremental ---
@@ -286,7 +287,7 @@ class DAG:
         self,
         root: str,
         depth: int,
-        direction: str = "both",
+        direction: Literal["forward", "backward", "both"] = "both",
     ) -> DAG: ...
 
     # --- Paths ---
@@ -294,15 +295,15 @@ class DAG:
         self,
         from_node: str,
         to_node: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[list[NodeId]]: ...
-    def shortest_path(self, from_node: str, to_node: str) -> Optional[list[NodeId]]: ...
+    def shortest_path(self, from_node: str, to_node: str) -> list[NodeId] | None: ...
     def longest_path(
         self,
         from_node: str,
         to_node: str,
-        costs: Optional[dict[str, float]] = None,
-    ) -> Optional[tuple[list[NodeId], float]]: ...
+        costs: dict[str, float] | None = None,
+    ) -> tuple[list[NodeId], float] | None: ...
 
     # --- Reachability ---
     def build_reachability_index(self) -> ReachabilityIndex: ...
@@ -322,13 +323,13 @@ class DAG:
     def save(
         self,
         path: str,
-        payload_serializer: Optional[Callable[[Any], Any]] = None,
+        payload_serializer: Callable[[Any], Any] | None = None,
     ) -> None: ...
     @classmethod
     def load(
         cls,
         path: str,
-        payload_deserializer: Optional[Callable[[Any], Any]] = None,
+        payload_deserializer: Callable[[Any], Any] | None = None,
     ) -> DAG: ...
 
     # --- Cache ---

@@ -35,44 +35,44 @@ from dagron.profiling import NodeProfile, ProfileReport, profile_execution
 from dagron.tracing import ExecutionTrace, TraceEvent, TraceEventType
 
 # Monkey-patch for convenience
-DAG.from_records = staticmethod(from_records)
-DAG.pretty_print = lambda self, **kw: pretty_print(self, **kw)
-DAG._repr_svg_ = lambda self: _repr_svg_(self)
+DAG.from_records = staticmethod(from_records)  # type: ignore[attr-defined]
+DAG.pretty_print = lambda self, **kw: pretty_print(self, **kw)  # type: ignore[attr-defined]
+DAG._repr_svg_ = lambda self: _repr_svg_(self)  # type: ignore[attr-defined]
 
 __version__ = "0.1.0"
 
 __all__ = [
     "DAG",
-    "DAGBuilder",
-    "NodeId",
-    "ReachabilityIndex",
-    "DagronError",
+    "AsyncDAGExecutor",
     "CycleError",
-    "NodeNotFoundError",
+    "DAGBuilder",
+    "DAGExecutor",
+    "DagronError",
     "DuplicateNodeError",
     "EdgeNotFoundError",
-    "GraphError",
-    "GraphDiff",
-    "GraphStats",
-    "ScheduledNode",
-    "ExecutionStep",
-    "ExecutionPlan",
-    "DAGExecutor",
-    "AsyncDAGExecutor",
     "ExecutionCallbacks",
+    "ExecutionPlan",
     "ExecutionResult",
+    "ExecutionStep",
+    "ExecutionTrace",
+    "GraphDiff",
+    "GraphError",
+    "GraphStats",
     "IncrementalExecutor",
     "IncrementalResult",
-    "NodeResult",
-    "NodeStatus",
-    "ExecutionTrace",
-    "TraceEvent",
-    "TraceEventType",
-    "NodeProfile",
-    "ProfileReport",
-    "profile_execution",
+    "NodeId",
     "NodeIterator",
     "NodeLevelIterator",
-    "pretty_print",
+    "NodeNotFoundError",
+    "NodeProfile",
+    "NodeResult",
+    "NodeStatus",
+    "ProfileReport",
+    "ReachabilityIndex",
+    "ScheduledNode",
+    "TraceEvent",
+    "TraceEventType",
     "from_records",
+    "pretty_print",
+    "profile_execution",
 ]

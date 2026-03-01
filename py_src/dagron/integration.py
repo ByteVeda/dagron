@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 from dagron._internal import DAG
 

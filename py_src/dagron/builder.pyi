@@ -1,6 +1,6 @@
 """Type stubs for dagron.builder."""
 
-from typing import Any, Optional
+from typing import Any
 
 from dagron._internal import DAG
 
@@ -18,7 +18,7 @@ class DAGBuilder:
         self,
         from_node: str,
         to_node: str,
-        weight: Optional[float] = None,
-        label: Optional[str] = None,
+        weight: float | None = None,
+        label: str | None = None,
     ) -> DAGBuilder: ...
     def build(self) -> DAG: ...

@@ -1,5 +1,7 @@
 """Tests for Phase 7: reverse, collapse, dominator tree, binary serialization, incremental."""
 
+import pytest
+
 import dagron
 from dagron import DAG, IncrementalExecutor
 
@@ -95,11 +97,8 @@ def test_collapse_preserves_payloads():
 
 def test_collapse_error_on_missing_node():
     dag = diamond_dag()
-    try:
+    with pytest.raises(dagron.NodeNotFoundError):
         dag.collapse(["b", "nonexistent"], "bc")
-        assert False, "Should have raised"
-    except dagron.NodeNotFoundError:
-        pass
 
 
 def test_collapse_all():
