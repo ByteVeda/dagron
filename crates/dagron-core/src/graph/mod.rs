@@ -1,7 +1,5 @@
 pub(crate) mod cache;
-pub mod concurrent;
 pub mod construction;
-pub mod incremental;
 pub mod introspection;
 pub mod scheduling;
 pub mod serialization;
@@ -9,7 +7,7 @@ pub mod toposort;
 pub mod transforms;
 pub mod validation;
 
-use std::sync::RwLock;
+use std::sync::Mutex;
 
 use ahash::AHashMap;
 
@@ -20,7 +18,7 @@ pub struct DAG<P = ()> {
     pub(crate) graph: InternalGraph<P>,
     pub(crate) name_to_index: AHashMap<String, InternalNodeIndex>,
     generation: u64,
-    pub(crate) cache: RwLock<cache::DagCache>,
+    pub(crate) cache: Mutex<cache::DagCache>,
 }
 
 impl<P> DAG<P> {
@@ -29,7 +27,7 @@ impl<P> DAG<P> {
             graph: InternalGraph::default(),
             name_to_index: AHashMap::new(),
             generation: 0,
-            cache: RwLock::new(cache::DagCache::new()),
+            cache: Mutex::new(cache::DagCache::new()),
         }
     }
 
@@ -63,38 +61,22 @@ impl<P> DAG<P> {
 
     /// Get the number of cache hits.
     pub fn cache_hits(&self) -> u64 {
-        self.cache.read().unwrap().hits()
+        self.cache.lock().unwrap().hits()
     }
 
     /// Get the number of cache misses.
     pub fn cache_misses(&self) -> u64 {
-        self.cache.read().unwrap().misses()
+        self.cache.lock().unwrap().misses()
     }
 
     /// Get the number of cached entries.
     pub fn cache_size(&self) -> usize {
-        self.cache.read().unwrap().size()
+        self.cache.lock().unwrap().size()
     }
 
     /// Clear all cached results.
     pub fn clear_cache(&self) {
-        self.cache.write().unwrap().invalidate();
-    }
-}
-
-impl<P: Clone> DAG<P> {
-    /// Create an independent snapshot (deep clone) of the DAG.
-    ///
-    /// The snapshot copies the graph structure, node payloads, and generation counter,
-    /// but starts with a fresh (empty) cache. Mutations to the snapshot do not affect
-    /// the original, and vice versa.
-    pub fn snapshot(&self) -> Self {
-        DAG {
-            graph: self.graph.clone(),
-            name_to_index: self.name_to_index.clone(),
-            generation: self.generation,
-            cache: RwLock::new(cache::DagCache::new()),
-        }
+        self.cache.lock().unwrap().invalidate();
     }
 }
 

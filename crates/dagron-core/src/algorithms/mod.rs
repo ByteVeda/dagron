@@ -1,6 +1,4 @@
 pub mod cycle;
-pub mod dominators;
-pub mod incremental;
 pub mod priority_toposort;
 pub mod scheduling;
 pub mod toposort;
@@ -8,8 +6,6 @@ pub mod transforms;
 pub mod traversal;
 
 pub use cycle::{find_cycles, would_create_cycle};
-pub use dominators::immediate_dominators;
-pub use incremental::{change_provenance, dirty_set};
 pub use priority_toposort::{topological_levels_priority, topological_sort_priority};
 pub use scheduling::{
     compute_bottom_levels, critical_path, max_parallelism_schedule,

@@ -1,7 +1,6 @@
 pub mod construction;
 pub mod dag;
 pub mod errors;
-pub mod incremental;
 pub mod introspection;
 pub mod node;
 pub mod payload;

@@ -18,8 +18,6 @@ from dagron.executor import (
     DAGExecutor,
     ExecutionCallbacks,
     ExecutionResult,
-    IncrementalExecutor,
-    IncrementalResult,
     NodeResult,
     NodeStatus,
 )
@@ -42,8 +40,6 @@ __all__ = [
     "AsyncDAGExecutor",
     "ExecutionCallbacks",
     "ExecutionResult",
-    "IncrementalExecutor",
-    "IncrementalResult",
     "NodeResult",
     "NodeStatus",
 ]
