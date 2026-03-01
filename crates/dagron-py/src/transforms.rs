@@ -44,6 +44,158 @@ fn clone_edges(
 
 #[pymethods]
 impl PyDAG {
+    /// Return a new DAG with all edges reversed.
+    ///
+    /// Same nodes, all edges flipped (A->B becomes B->A).
+    /// Edge weights and labels are preserved on the reversed edge.
+    ///
+    /// Returns:
+    ///     A new DAG with reversed edges.
+    pub fn reverse(&self, py: Python<'_>) -> PyResult<PyDAG> {
+        let mut new_dag = dagron_core::DAG::new();
+        clone_nodes(py, &self.inner, &mut new_dag)?;
+
+        // Add reversed edges
+        let sg = self.inner.to_serializable(|_| None);
+        for edge in &sg.edges {
+            new_dag
+                .add_edge(&edge.to, &edge.from, Some(edge.weight), edge.label.clone())
+                .map_err(errors::into_pyerr)?;
+        }
+
+        Ok(PyDAG { inner: new_dag })
+    }
+
+    /// Collapse a set of nodes into a single summary node.
+    ///
+    /// Internal edges (both endpoints in the collapse set) are dropped.
+    /// External edges are redirected to/from the collapsed node.
+    ///
+    /// Args:
+    ///     nodes: List of node names to collapse.
+    ///     collapsed_name: Name of the new collapsed node.
+    ///     payload: Optional payload for the collapsed node.
+    ///
+    /// Returns:
+    ///     A new DAG with the nodes collapsed.
+    ///
+    /// Raises:
+    ///     NodeNotFoundError: If any node in the list doesn't exist.
+    ///     DuplicateNodeError: If collapsed_name collides with a surviving node.
+    #[pyo3(signature = (nodes, collapsed_name, payload=None))]
+    pub fn collapse(
+        &self,
+        py: Python<'_>,
+        nodes: Vec<String>,
+        collapsed_name: String,
+        payload: Option<PyObject>,
+    ) -> PyResult<PyDAG> {
+        let node_refs: Vec<&str> = nodes.iter().map(|s| s.as_str()).collect();
+        let collapse_set: std::collections::HashSet<&str> = node_refs.iter().copied().collect();
+
+        // Validate all nodes exist
+        for &n in &node_refs {
+            if !self.inner.has_node(n) {
+                return Err(errors::into_pyerr(dagron_core::DagronError::NodeNotFound(
+                    n.to_string(),
+                )));
+            }
+        }
+
+        let mut new_dag = dagron_core::DAG::new();
+
+        // Add surviving nodes
+        for name in self.inner.node_names() {
+            if !collapse_set.contains(name.as_str()) {
+                let p = self.inner.get_payload(&name).map_err(errors::into_pyerr)?;
+                let cloned = clone_payload(py, p);
+                new_dag
+                    .add_node(name, cloned)
+                    .map_err(errors::into_pyerr)?;
+            }
+        }
+
+        // Add collapsed node
+        let collapsed_payload = PyNodePayload {
+            payload,
+            metadata: None,
+        };
+        new_dag
+            .add_node(collapsed_name.clone(), collapsed_payload)
+            .map_err(errors::into_pyerr)?;
+
+        // Process edges
+        let sg = self.inner.to_serializable(|_| None);
+        let mut added_edges: std::collections::HashSet<(String, String)> =
+            std::collections::HashSet::new();
+
+        for edge in &sg.edges {
+            let src_in = collapse_set.contains(edge.from.as_str());
+            let tgt_in = collapse_set.contains(edge.to.as_str());
+
+            if src_in && tgt_in {
+                continue; // internal edge
+            }
+
+            let actual_src = if src_in {
+                &collapsed_name
+            } else {
+                &edge.from
+            };
+            let actual_tgt = if tgt_in {
+                &collapsed_name
+            } else {
+                &edge.to
+            };
+
+            if actual_src == actual_tgt {
+                continue; // skip self-loops
+            }
+
+            let edge_key = (actual_src.clone(), actual_tgt.clone());
+            if added_edges.contains(&edge_key) {
+                continue;
+            }
+
+            new_dag
+                .add_edge(actual_src, actual_tgt, Some(edge.weight), edge.label.clone())
+                .map_err(errors::into_pyerr)?;
+            added_edges.insert(edge_key);
+        }
+
+        Ok(PyDAG { inner: new_dag })
+    }
+
+    /// Compute the dominator tree rooted at the given node.
+    ///
+    /// Args:
+    ///     root: The root node name.
+    ///
+    /// Returns:
+    ///     A list of (node, immediate_dominator) tuples.
+    pub fn dominator_tree(&self, py: Python<'_>, root: String) -> PyResult<Vec<(String, String)>> {
+        py.allow_threads(|| {
+            self.inner
+                .dominator_tree(&root)
+                .map_err(errors::into_pyerr)
+        })
+    }
+
+    /// Create an independent snapshot (deep clone) of this DAG.
+    ///
+    /// The snapshot copies all nodes (including payloads and metadata),
+    /// edges, and the generation counter. It starts with a fresh cache.
+    /// Mutations to the snapshot do not affect the original and vice versa.
+    ///
+    /// Returns:
+    ///     A new independent DAG with the same structure and data.
+    pub fn snapshot(&self, py: Python<'_>) -> PyResult<PyDAG> {
+        let mut new_dag = dagron_core::DAG::new();
+        clone_nodes(py, &self.inner, &mut new_dag)?;
+        clone_edges(&self.inner, &mut new_dag)?;
+        Ok(PyDAG { inner: new_dag })
+    }
+
     /// Return a new DAG that is the transitive reduction of this one.
     ///
     /// Removes all redundant edges (edges implied by longer paths).

@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyFloat, PyInt, PyList, PyString};
+use pyo3::types::{PyBool, PyBytes, PyDict, PyFloat, PyInt, PyList, PyString};
 
 use crate::dag::PyDAG;
 use crate::errors;
@@ -205,5 +205,73 @@ impl PyDAG {
     ///     A Mermaid format string.
     pub fn to_mermaid(&self) -> String {
         self.inner.to_mermaid()
+    }
+
+    /// Serialize the DAG to a binary (bincode) byte string.
+    ///
+    /// Args:
+    ///     payload_serializer: Optional callable that converts a node's payload
+    ///         to a JSON-compatible value. If not provided, payloads are omitted.
+    ///
+    /// Returns:
+    ///     A bytes object containing the binary representation.
+    #[pyo3(signature = (payload_serializer=None))]
+    pub fn to_bytes<'py>(
+        &self,
+        py: Python<'py>,
+        payload_serializer: Option<&Bound<'py, PyAny>>,
+    ) -> PyResult<Py<PyBytes>> {
+        let bytes = match payload_serializer {
+            Some(cb) => self.inner.to_bincode(|p| {
+                if let Some(ref payload_obj) = p.payload {
+                    let result = cb.call1((payload_obj.clone_ref(py),));
+                    match result {
+                        Ok(val) => py_to_json_value(&val).ok(),
+                        Err(_) => None,
+                    }
+                } else {
+                    None
+                }
+            }),
+            None => self.inner.to_bincode(|_| None),
+        }
+        .map_err(errors::into_pyerr)?;
+
+        Ok(PyBytes::new(py, &bytes).unbind())
+    }
+
+    /// Deserialize a DAG from a binary (bincode) byte string.
+    ///
+    /// Args:
+    ///     data: A bytes object previously produced by `to_bytes()`.
+    ///     payload_deserializer: Optional callable that converts a JSON-compatible
+    ///         value back to the node's payload. If not provided, payloads are set to None.
+    ///
+    /// Returns:
+    ///     A new DAG instance reconstructed from the binary data.
+    #[classmethod]
+    #[pyo3(signature = (data, payload_deserializer=None))]
+    pub fn from_bytes(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        py: Python<'_>,
+        data: &[u8],
+        payload_deserializer: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let inner = dagron_core::DAG::from_bincode(data, |json_val| {
+            let payload = match (payload_deserializer, json_val) {
+                (Some(cb), Some(val)) => {
+                    let py_val = json_value_to_py(py, val).ok();
+                    py_val.and_then(|v| cb.call1((v,)).ok().map(|r| r.unbind()))
+                }
+                _ => None,
+            };
+            PyNodePayload {
+                payload,
+                metadata: None,
+            }
+        })
+        .map_err(errors::into_pyerr)?;
+
+        Ok(PyDAG { inner })
     }
 }
