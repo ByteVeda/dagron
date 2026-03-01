@@ -1,4 +1,5 @@
 pub mod cycle;
+pub mod diff;
 pub mod dominators;
 pub mod incremental;
 pub mod paths;
@@ -17,9 +18,8 @@ pub use paths::{all_paths, longest_path, shortest_path};
 pub use priority_toposort::{topological_levels_priority, topological_sort_priority};
 pub use reachability::ReachabilityIndex;
 pub use scheduling::{
-    compute_bottom_levels, critical_path, max_parallelism_schedule,
-    resource_constrained_schedule, ExecutionPlan, ExecutionStep, ScheduleConstraints,
-    ScheduledNode,
+    compute_bottom_levels, critical_path, max_parallelism_schedule, resource_constrained_schedule,
+    ExecutionPlan, ExecutionStep, ScheduleConstraints, ScheduledNode,
 };
 pub use subgraph::{depth_neighborhood, SubgraphDirection};
 pub use toposort::{

@@ -4,7 +4,6 @@ import asyncio
 import threading
 import time
 
-import pytest
 
 import dagron
 
@@ -199,9 +198,7 @@ class TestAsyncDAGExecutorTimeout:
             return "done"
 
         executor = dagron.AsyncDAGExecutor(dag)
-        result = asyncio.run(
-            executor.execute({"slow": slow_task}, timeout=0.1)
-        )
+        result = asyncio.run(executor.execute({"slow": slow_task}, timeout=0.1))
 
         assert result.node_results["slow"].status == dagron.NodeStatus.TIMED_OUT
         assert result.timed_out == 1

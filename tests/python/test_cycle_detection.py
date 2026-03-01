@@ -1,5 +1,5 @@
 import pytest
-from dagron import DAG, CycleError
+from dagron import CycleError
 
 
 class TestCycleDetection:

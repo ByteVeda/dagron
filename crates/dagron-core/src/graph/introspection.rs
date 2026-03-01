@@ -105,19 +105,13 @@ impl<P> DAG<P> {
     /// Get the in-degree (number of incoming edges) of a node.
     pub fn in_degree(&self, name: &str) -> Result<usize, DagronError> {
         let idx = self.resolve_name(name)?;
-        Ok(self
-            .graph
-            .edges_directed(idx, Direction::Incoming)
-            .count())
+        Ok(self.graph.edges_directed(idx, Direction::Incoming).count())
     }
 
     /// Get the out-degree (number of outgoing edges) of a node.
     pub fn out_degree(&self, name: &str) -> Result<usize, DagronError> {
         let idx = self.resolve_name(name)?;
-        Ok(self
-            .graph
-            .edges_directed(idx, Direction::Outgoing)
-            .count())
+        Ok(self.graph.edges_directed(idx, Direction::Outgoing).count())
     }
 
     /// Get all root nodes (nodes with no incoming edges).

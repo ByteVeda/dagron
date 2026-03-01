@@ -1,6 +1,7 @@
 pub(crate) mod cache;
 pub mod concurrent;
 pub mod construction;
+pub mod diff;
 pub mod incremental;
 pub mod introspection;
 pub mod matching;
@@ -8,6 +9,7 @@ pub mod paths;
 pub mod reachability;
 pub mod scheduling;
 pub mod serialization;
+pub mod stats;
 pub mod subgraph;
 pub mod toposort;
 pub mod transforms;

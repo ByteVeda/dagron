@@ -40,14 +40,16 @@ impl<P> DAG<P> {
         let from_idx = self.resolve_name(from)?;
         let to_idx = self.resolve_name(to)?;
 
-        Ok(algorithms::shortest_path(&self.graph, from_idx, to_idx).map(|path| {
-            path.into_iter()
-                .map(|idx| NodeId {
-                    index: idx.index() as u32,
-                    name: self.graph[idx].name.clone(),
-                })
-                .collect()
-        }))
+        Ok(
+            algorithms::shortest_path(&self.graph, from_idx, to_idx).map(|path| {
+                path.into_iter()
+                    .map(|idx| NodeId {
+                        index: idx.index() as u32,
+                        name: self.graph[idx].name.clone(),
+                    })
+                    .collect()
+            }),
+        )
     }
 
     /// Find longest weighted path from `from` to `to`.

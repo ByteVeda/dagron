@@ -22,4 +22,9 @@ dev = [
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "pytest-timeout>=2.4.0",
+    "ruff>=0.8.0",
+]
+bench = [
+    "pytest-benchmark>=5.1.0",
+    "networkx>=3.0",
 ]

@@ -1,4 +1,4 @@
-from dagron import DAG, ExecutionPlan, ExecutionStep, ScheduledNode
+from dagron import ExecutionPlan, ExecutionStep, ScheduledNode
 
 
 class TestExecutionPlan:

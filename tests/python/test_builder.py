@@ -7,13 +7,7 @@ from dagron import DAG, DAGBuilder, CycleError, DuplicateNodeError, NodeNotFound
 
 class TestDAGBuilder:
     def test_basic(self):
-        dag = (
-            DAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
-        )
+        dag = DAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         assert isinstance(dag, DAG)
         assert dag.node_count() == 2
         assert dag.edge_count() == 1
@@ -30,11 +24,7 @@ class TestDAGBuilder:
         assert dag.get_payload("b") == 2
 
     def test_with_metadata(self):
-        dag = (
-            DAGBuilder()
-            .add_node("a", metadata={"key": "val"})
-            .build()
-        )
+        dag = DAGBuilder().add_node("a", metadata={"key": "val"}).build()
         assert dag.get_metadata("a") == {"key": "val"}
 
     def test_with_weight_and_label(self):
@@ -91,7 +81,9 @@ class TestDAGBuilder:
         builder = DAGBuilder()
         result = builder.add_node("a")
         assert result is builder
-        result = builder.add_edge("a", "a")  # This will fail on build with cycle, but chaining works
+        result = builder.add_edge(
+            "a", "a"
+        )  # This will fail on build with cycle, but chaining works
 
     def test_builder_staticmethod(self):
         builder = DAG.builder()

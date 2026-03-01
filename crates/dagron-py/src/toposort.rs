@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 use crate::dag::PyDAG;
 use crate::errors;
+use crate::iterators::{PyNodeIterator, PyNodeLevelIterator};
 use crate::node::PyNodeId;
 
 #[pymethods]
@@ -74,5 +75,34 @@ impl PyDAG {
             .into_iter()
             .map(|level| level.into_iter().map(PyNodeId::from).collect())
             .collect())
+    }
+
+    /// Return a lazy iterator over topologically sorted nodes.
+    ///
+    /// Raises:
+    ///     CycleError: If the graph contains cycles.
+    pub fn iter_topological_sort(&self, py: Python<'_>) -> PyResult<PyNodeIterator> {
+        let inner_ref = &self.inner;
+        let nodes = py
+            .allow_threads(|| inner_ref.topological_sort())
+            .map_err(errors::into_pyerr)?;
+        let items: Vec<(u32, String)> = nodes.into_iter().map(|n| (n.index, n.name)).collect();
+        Ok(PyNodeIterator::new(items))
+    }
+
+    /// Return a lazy iterator over topological levels.
+    ///
+    /// Raises:
+    ///     CycleError: If the graph contains cycles.
+    pub fn iter_topological_levels(&self, py: Python<'_>) -> PyResult<PyNodeLevelIterator> {
+        let inner_ref = &self.inner;
+        let levels = py
+            .allow_threads(|| inner_ref.topological_levels())
+            .map_err(errors::into_pyerr)?;
+        let level_items: Vec<Vec<(u32, String)>> = levels
+            .into_iter()
+            .map(|level| level.into_iter().map(|n| (n.index, n.name)).collect())
+            .collect();
+        Ok(PyNodeLevelIterator::new(level_items))
     }
 }

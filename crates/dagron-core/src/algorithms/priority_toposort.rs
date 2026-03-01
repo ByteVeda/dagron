@@ -55,8 +55,7 @@ pub fn topological_sort_priority<P>(
 
     while let Some((_, _, node)) = heap.pop() {
         result.push(node);
-        let mut neighbors: Vec<InternalNodeIndex> =
-            graph.edges(node).map(|e| e.target()).collect();
+        let mut neighbors: Vec<InternalNodeIndex> = graph.edges(node).map(|e| e.target()).collect();
         neighbors.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
         for neighbor in neighbors {
             if let Some(deg) = in_degree.get_mut(&neighbor) {
@@ -151,7 +150,8 @@ fn sort_by_priority<P>(
         let pa = priorities.get(a).copied().unwrap_or(0.0);
         let pb = priorities.get(b).copied().unwrap_or(0.0);
         // Higher priority first, then name ascending
-        pb.total_cmp(&pa).then_with(|| graph[*a].name.cmp(&graph[*b].name))
+        pb.total_cmp(&pa)
+            .then_with(|| graph[*a].name.cmp(&graph[*b].name))
     });
 }
 

@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 use crate::dag::PyDAG;
 use crate::errors;
+use crate::iterators::PyNodeIterator;
 use crate::node::PyNodeId;
 
 #[pymethods]
@@ -16,7 +17,9 @@ impl PyDAG {
     /// Raises:
     ///     NodeNotFoundError: If either node doesn't exist.
     pub fn has_edge(&self, from_node: &str, to_node: &str) -> PyResult<bool> {
-        self.inner.has_edge(from_node, to_node).map_err(errors::into_pyerr)
+        self.inner
+            .has_edge(from_node, to_node)
+            .map_err(errors::into_pyerr)
     }
 
     /// Return the number of nodes in the graph.
@@ -43,7 +46,10 @@ impl PyDAG {
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
     pub fn set_payload(&mut self, name: &str, payload: Option<Py<PyAny>>) -> PyResult<()> {
-        let p = self.inner.get_payload_mut(name).map_err(errors::into_pyerr)?;
+        let p = self
+            .inner
+            .get_payload_mut(name)
+            .map_err(errors::into_pyerr)?;
         p.payload = payload;
         Ok(())
     }
@@ -62,7 +68,10 @@ impl PyDAG {
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
     pub fn set_metadata(&mut self, name: &str, metadata: Option<Py<PyAny>>) -> PyResult<()> {
-        let p = self.inner.get_payload_mut(name).map_err(errors::into_pyerr)?;
+        let p = self
+            .inner
+            .get_payload_mut(name)
+            .map_err(errors::into_pyerr)?;
         p.metadata = metadata;
         Ok(())
     }
@@ -142,11 +151,72 @@ impl PyDAG {
 
     /// Get all leaf nodes (nodes with no outgoing edges).
     pub fn leaves(&self) -> Vec<PyNodeId> {
-        self.inner.leaves().into_iter().map(PyNodeId::from).collect()
+        self.inner
+            .leaves()
+            .into_iter()
+            .map(PyNodeId::from)
+            .collect()
     }
 
     /// Get all nodes in the graph.
     pub fn nodes(&self) -> Vec<PyNodeId> {
         self.inner.nodes().into_iter().map(PyNodeId::from).collect()
+    }
+
+    /// Return a lazy iterator over all nodes.
+    pub fn iter_nodes(&self, _py: Python<'_>) -> PyNodeIterator {
+        let items: Vec<(u32, String)> = self
+            .inner
+            .nodes()
+            .into_iter()
+            .map(|n| (n.index, n.name))
+            .collect();
+        PyNodeIterator::new(items)
+    }
+
+    /// Return a lazy iterator over root nodes.
+    pub fn iter_roots(&self, _py: Python<'_>) -> PyNodeIterator {
+        let items: Vec<(u32, String)> = self
+            .inner
+            .roots()
+            .into_iter()
+            .map(|n| (n.index, n.name))
+            .collect();
+        PyNodeIterator::new(items)
+    }
+
+    /// Return a lazy iterator over leaf nodes.
+    pub fn iter_leaves(&self, _py: Python<'_>) -> PyNodeIterator {
+        let items: Vec<(u32, String)> = self
+            .inner
+            .leaves()
+            .into_iter()
+            .map(|n| (n.index, n.name))
+            .collect();
+        PyNodeIterator::new(items)
+    }
+
+    /// Return a lazy iterator over ancestors of a node.
+    pub fn iter_ancestors(&self, py: Python<'_>, name: &str) -> PyResult<PyNodeIterator> {
+        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+        let graph_ref = self.inner.inner_graph();
+        let indices = py.allow_threads(|| dagron_core::algorithms::ancestors(graph_ref, idx));
+        let items: Vec<(u32, String)> = indices
+            .iter()
+            .map(|&i| (i.index() as u32, self.inner.inner_graph()[i].name.clone()))
+            .collect();
+        Ok(PyNodeIterator::new(items))
+    }
+
+    /// Return a lazy iterator over descendants of a node.
+    pub fn iter_descendants(&self, py: Python<'_>, name: &str) -> PyResult<PyNodeIterator> {
+        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+        let graph_ref = self.inner.inner_graph();
+        let indices = py.allow_threads(|| dagron_core::algorithms::descendants(graph_ref, idx));
+        let items: Vec<(u32, String)> = indices
+            .iter()
+            .map(|&i| (i.index() as u32, self.inner.inner_graph()[i].name.clone()))
+            .collect();
+        Ok(PyNodeIterator::new(items))
     }
 }

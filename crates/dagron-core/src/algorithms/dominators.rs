@@ -14,7 +14,8 @@ pub fn immediate_dominators<P>(
     topo_order: &[InternalNodeIndex],
 ) -> AHashMap<InternalNodeIndex, InternalNodeIndex> {
     // Build position map for the topo order
-    let mut topo_pos: AHashMap<InternalNodeIndex, usize> = AHashMap::with_capacity(topo_order.len());
+    let mut topo_pos: AHashMap<InternalNodeIndex, usize> =
+        AHashMap::with_capacity(topo_order.len());
     for (i, &node) in topo_order.iter().enumerate() {
         topo_pos.insert(node, i);
     }

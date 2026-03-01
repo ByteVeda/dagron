@@ -86,13 +86,18 @@ fn reduction_preserves_edge_weights() {
     dag.add_node("a".into(), ()).unwrap();
     dag.add_node("b".into(), ()).unwrap();
     dag.add_node("c".into(), ()).unwrap();
-    dag.add_edge("a", "b", Some(5.0), Some("dep".into())).unwrap();
+    dag.add_edge("a", "b", Some(5.0), Some("dep".into()))
+        .unwrap();
     dag.add_edge("b", "c", Some(3.0), None).unwrap();
     dag.add_edge("a", "c", Some(99.0), None).unwrap(); // shortcut, removed
 
     let reduced = dag.transitive_reduction();
     let sg = reduced.to_serializable(|_| None);
-    let ab_edge = sg.edges.iter().find(|e| e.from == "a" && e.to == "b").unwrap();
+    let ab_edge = sg
+        .edges
+        .iter()
+        .find(|e| e.from == "a" && e.to == "b")
+        .unwrap();
     assert!((ab_edge.weight - 5.0).abs() < f64::EPSILON);
     assert_eq!(ab_edge.label.as_deref(), Some("dep"));
 }
@@ -273,9 +278,7 @@ fn merge_with_custom_resolver() {
     dag2.add_node("a".into(), 5).unwrap();
     dag2.add_node("c".into(), 30).unwrap();
 
-    let merged = dag1
-        .merge_with(&dag2, |_name, p1, p2| p1 + p2)
-        .unwrap();
+    let merged = dag1.merge_with(&dag2, |_name, p1, p2| p1 + p2).unwrap();
     assert_eq!(*merged.get_payload("a").unwrap(), 15); // 10 + 5
     assert_eq!(*merged.get_payload("b").unwrap(), 20);
     assert_eq!(*merged.get_payload("c").unwrap(), 30);
@@ -328,11 +331,16 @@ fn reverse_preserves_edge_weights() {
     let mut dag = DAG::new();
     dag.add_node("x".into(), ()).unwrap();
     dag.add_node("y".into(), ()).unwrap();
-    dag.add_edge("x", "y", Some(3.5), Some("dep".into())).unwrap();
+    dag.add_edge("x", "y", Some(3.5), Some("dep".into()))
+        .unwrap();
 
     let rev = dag.reverse();
     let sg = rev.to_serializable(|_| None);
-    let edge = sg.edges.iter().find(|e| e.from == "y" && e.to == "x").unwrap();
+    let edge = sg
+        .edges
+        .iter()
+        .find(|e| e.from == "y" && e.to == "x")
+        .unwrap();
     assert!((edge.weight - 3.5).abs() < f64::EPSILON);
     assert_eq!(edge.label.as_deref(), Some("dep"));
 }
@@ -396,10 +404,8 @@ fn dominator_tree_diamond() {
     let dag = diamond_dag();
     let dom = dag.dominator_tree("a").unwrap();
     // a->a (root), b->a, c->a, d->a
-    let dom_map: std::collections::HashMap<&str, &str> = dom
-        .iter()
-        .map(|(n, d)| (n.as_str(), d.as_str()))
-        .collect();
+    let dom_map: std::collections::HashMap<&str, &str> =
+        dom.iter().map(|(n, d)| (n.as_str(), d.as_str())).collect();
     assert_eq!(dom_map["a"], "a");
     assert_eq!(dom_map["b"], "a");
     assert_eq!(dom_map["c"], "a");
@@ -416,10 +422,8 @@ fn dominator_tree_linear() {
     dag.add_edge("b", "c", None, None).unwrap();
 
     let dom = dag.dominator_tree("a").unwrap();
-    let dom_map: std::collections::HashMap<&str, &str> = dom
-        .iter()
-        .map(|(n, d)| (n.as_str(), d.as_str()))
-        .collect();
+    let dom_map: std::collections::HashMap<&str, &str> =
+        dom.iter().map(|(n, d)| (n.as_str(), d.as_str())).collect();
     assert_eq!(dom_map["a"], "a");
     assert_eq!(dom_map["b"], "a");
     assert_eq!(dom_map["c"], "b");
@@ -445,10 +449,8 @@ fn dominator_tree_multiple_paths() {
     dag.add_edge("d", "e", None, None).unwrap();
 
     let dom = dag.dominator_tree("a").unwrap();
-    let dom_map: std::collections::HashMap<&str, &str> = dom
-        .iter()
-        .map(|(n, d)| (n.as_str(), d.as_str()))
-        .collect();
+    let dom_map: std::collections::HashMap<&str, &str> =
+        dom.iter().map(|(n, d)| (n.as_str(), d.as_str())).collect();
     assert_eq!(dom_map["a"], "a");
     assert_eq!(dom_map["b"], "a");
     assert_eq!(dom_map["c"], "a");

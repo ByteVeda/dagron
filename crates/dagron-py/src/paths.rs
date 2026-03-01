@@ -87,11 +87,6 @@ impl PyDAG {
         let result = py
             .allow_threads(|| inner_ref.longest_path(&from_node, &to_node, &costs_map))
             .map_err(errors::into_pyerr)?;
-        Ok(result.map(|(path, cost)| {
-            (
-                path.into_iter().map(PyNodeId::from).collect(),
-                cost,
-            )
-        }))
+        Ok(result.map(|(path, cost)| (path.into_iter().map(PyNodeId::from).collect(), cost)))
     }
 }

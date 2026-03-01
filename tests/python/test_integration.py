@@ -1,9 +1,8 @@
 """Tests for from_records integration helper."""
 
-import pytest
 from dataclasses import dataclass
 
-from dagron import DAG, from_records, NodeNotFoundError
+from dagron import DAG, from_records
 
 
 class TestFromRecordsDicts:

@@ -14,6 +14,7 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 bincode = { workspace = true }
+memmap2 = { workspace = true }
 regex = { workspace = true }
 
 [dev-dependencies]

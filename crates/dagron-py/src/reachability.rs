@@ -77,12 +77,9 @@ impl PyReachabilityIndex {
 
 impl PyReachabilityIndex {
     fn resolve(&self, name: &str) -> PyResult<InternalNodeIndex> {
-        self.name_to_index
-            .get(name)
-            .copied()
-            .ok_or_else(|| {
-                errors::into_pyerr(dagron_core::DagronError::NodeNotFound(name.to_string()))
-            })
+        self.name_to_index.get(name).copied().ok_or_else(|| {
+            errors::into_pyerr(dagron_core::DagronError::NodeNotFound(name.to_string()))
+        })
     }
 }
 

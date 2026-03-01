@@ -1,5 +1,5 @@
 import pytest
-from dagron import DAG, NodeNotFoundError
+from dagron import NodeNotFoundError
 
 
 class TestNodeQueries:

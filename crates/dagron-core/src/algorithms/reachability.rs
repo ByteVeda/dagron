@@ -21,7 +21,7 @@ impl ReachabilityIndex {
     pub fn new<P>(graph: &InternalGraph<P>) -> Result<Self, CycleInfo> {
         let topo = super::toposort::topological_sort_kahn(graph)?;
         let num_nodes = topo.len();
-        let words_per_node = (num_nodes + 63) / 64;
+        let words_per_node = num_nodes.div_ceil(64);
 
         let mut node_to_pos = AHashMap::with_capacity(num_nodes);
         let mut pos_to_node = Vec::with_capacity(num_nodes);
@@ -35,10 +35,10 @@ impl ReachabilityIndex {
         let mut forward = vec![vec![0u64; words_per_node]; num_nodes];
 
         // Set each node's own bit
-        for i in 0..num_nodes {
+        for (i, row) in forward.iter_mut().enumerate().take(num_nodes) {
             let word = i / 64;
             let bit = i % 64;
-            forward[i][word] |= 1u64 << bit;
+            row[word] |= 1u64 << bit;
         }
 
         // Process in reverse topological order
@@ -53,8 +53,16 @@ impl ReachabilityIndex {
                 .collect();
 
             for succ_pos in successor_positions {
-                for w in 0..words_per_node {
-                    forward[pos][w] |= forward[succ_pos][w];
+                if pos < succ_pos {
+                    let (left, right) = forward.split_at_mut(succ_pos);
+                    for (dst, src) in left[pos].iter_mut().zip(right[0].iter()) {
+                        *dst |= *src;
+                    }
+                } else {
+                    let (left, right) = forward.split_at_mut(pos);
+                    for (dst, src) in right[0].iter_mut().zip(left[succ_pos].iter()) {
+                        *dst |= *src;
+                    }
                 }
             }
         }

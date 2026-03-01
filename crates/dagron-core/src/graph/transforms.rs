@@ -106,8 +106,7 @@ impl<P: Clone> DAG<P> {
             let to_name = &self.graph[edge.target()].name;
             if new_dag.has_node(from_name) && new_dag.has_node(to_name) {
                 let data = edge.weight();
-                let _ =
-                    new_dag.add_edge(from_name, to_name, Some(data.weight), data.label.clone());
+                let _ = new_dag.add_edge(from_name, to_name, Some(data.weight), data.label.clone());
             }
         }
 
@@ -123,11 +122,7 @@ impl<P: Clone> DAG<P> {
     ///
     /// All edges from both DAGs are included. The merged graph is validated
     /// for cycles (returns an error if the merge would create one).
-    pub fn merge(
-        &self,
-        other: &DAG<P>,
-        conflict: MergeConflict,
-    ) -> Result<DAG<P>, DagronError> {
+    pub fn merge(&self, other: &DAG<P>, conflict: MergeConflict) -> Result<DAG<P>, DagronError> {
         let mut new_dag = DAG::new();
 
         // Add all nodes from self
@@ -186,11 +181,7 @@ impl<P: Clone> DAG<P> {
     /// is called to produce the merged payload.
     ///
     /// The merged graph is validated for cycles.
-    pub fn merge_with<F>(
-        &self,
-        other: &DAG<P>,
-        resolver: F,
-    ) -> Result<DAG<P>, DagronError>
+    pub fn merge_with<F>(&self, other: &DAG<P>, resolver: F) -> Result<DAG<P>, DagronError>
     where
         F: Fn(&str, &P, &P) -> P,
     {
@@ -266,12 +257,7 @@ impl<P: Clone> DAG<P> {
     /// Internal edges (both endpoints in the collapse set) are dropped.
     /// External edges are redirected to/from the collapsed node (duplicates and
     /// self-loops are skipped).
-    pub fn collapse(
-        &self,
-        nodes: &[&str],
-        name: &str,
-        payload: P,
-    ) -> Result<DAG<P>, DagronError> {
+    pub fn collapse(&self, nodes: &[&str], name: &str, payload: P) -> Result<DAG<P>, DagronError> {
         let collapse_set: AHashSet<&str> = nodes.iter().copied().collect();
 
         // Validate all nodes exist
@@ -335,7 +321,12 @@ impl<P: Clone> DAG<P> {
                 continue;
             }
 
-            new_dag.add_edge(actual_src, actual_tgt, Some(data.weight), data.label.clone())?;
+            new_dag.add_edge(
+                actual_src,
+                actual_tgt,
+                Some(data.weight),
+                data.label.clone(),
+            )?;
             added_edges.insert(edge_key);
         }
 
@@ -356,12 +347,7 @@ impl<P> DAG<P> {
 
         let mut result: Vec<(String, String)> = idom
             .iter()
-            .map(|(&node, &dom)| {
-                (
-                    self.graph[node].name.clone(),
-                    self.graph[dom].name.clone(),
-                )
-            })
+            .map(|(&node, &dom)| (self.graph[node].name.clone(), self.graph[dom].name.clone()))
             .collect();
 
         // Sort for deterministic output

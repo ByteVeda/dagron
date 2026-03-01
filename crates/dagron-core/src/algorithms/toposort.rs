@@ -41,8 +41,7 @@ pub fn topological_sort_kahn<P>(
     while let Some(node) = queue.pop_front() {
         result.push(node);
         // Collect and sort neighbors for deterministic ordering
-        let mut neighbors: Vec<InternalNodeIndex> =
-            graph.edges(node).map(|e| e.target()).collect();
+        let mut neighbors: Vec<InternalNodeIndex> = graph.edges(node).map(|e| e.target()).collect();
         neighbors.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
         for neighbor in neighbors {
             if let Some(deg) = in_degree.get_mut(&neighbor) {
@@ -78,12 +77,12 @@ pub fn topological_sort_dfs<P>(
     nodes.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
 
     for node in nodes {
-        if !visited.contains(&node) {
-            if !dfs_visit(graph, node, &mut visited, &mut on_stack, &mut result) {
-                return Err(CycleInfo {
-                    message: "Graph contains a cycle".to_string(),
-                });
-            }
+        if !visited.contains(&node)
+            && !dfs_visit(graph, node, &mut visited, &mut on_stack, &mut result)
+        {
+            return Err(CycleInfo {
+                message: "Graph contains a cycle".to_string(),
+            });
         }
     }
 
@@ -102,8 +101,7 @@ fn dfs_visit<P>(
     on_stack.insert(node);
 
     // Sort neighbors for deterministic ordering
-    let mut neighbors: Vec<InternalNodeIndex> =
-        graph.edges(node).map(|e| e.target()).collect();
+    let mut neighbors: Vec<InternalNodeIndex> = graph.edges(node).map(|e| e.target()).collect();
     neighbors.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
 
     for neighbor in neighbors {

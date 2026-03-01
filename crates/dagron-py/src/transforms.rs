@@ -109,9 +109,7 @@ impl PyDAG {
             if !collapse_set.contains(name.as_str()) {
                 let p = self.inner.get_payload(&name).map_err(errors::into_pyerr)?;
                 let cloned = clone_payload(py, p);
-                new_dag
-                    .add_node(name, cloned)
-                    .map_err(errors::into_pyerr)?;
+                new_dag.add_node(name, cloned).map_err(errors::into_pyerr)?;
             }
         }
 
@@ -137,16 +135,8 @@ impl PyDAG {
                 continue; // internal edge
             }
 
-            let actual_src = if src_in {
-                &collapsed_name
-            } else {
-                &edge.from
-            };
-            let actual_tgt = if tgt_in {
-                &collapsed_name
-            } else {
-                &edge.to
-            };
+            let actual_src = if src_in { &collapsed_name } else { &edge.from };
+            let actual_tgt = if tgt_in { &collapsed_name } else { &edge.to };
 
             if actual_src == actual_tgt {
                 continue; // skip self-loops
@@ -158,7 +148,12 @@ impl PyDAG {
             }
 
             new_dag
-                .add_edge(actual_src, actual_tgt, Some(edge.weight), edge.label.clone())
+                .add_edge(
+                    actual_src,
+                    actual_tgt,
+                    Some(edge.weight),
+                    edge.label.clone(),
+                )
                 .map_err(errors::into_pyerr)?;
             added_edges.insert(edge_key);
         }
@@ -174,11 +169,7 @@ impl PyDAG {
     /// Returns:
     ///     A list of (node, immediate_dominator) tuples.
     pub fn dominator_tree(&self, py: Python<'_>, root: String) -> PyResult<Vec<(String, String)>> {
-        py.allow_threads(|| {
-            self.inner
-                .dominator_tree(&root)
-                .map_err(errors::into_pyerr)
-        })
+        py.allow_threads(|| self.inner.dominator_tree(&root).map_err(errors::into_pyerr))
     }
 
     /// Create an independent snapshot (deep clone) of this DAG.
@@ -205,9 +196,7 @@ impl PyDAG {
     ///     A new DAG with redundant edges removed.
     pub fn transitive_reduction(&self, py: Python<'_>) -> PyResult<PyDAG> {
         let redundant = py.allow_threads(|| {
-            dagron_core::algorithms::transitive_reduction_redundant_edges(
-                self.inner.inner_graph(),
-            )
+            dagron_core::algorithms::transitive_reduction_redundant_edges(self.inner.inner_graph())
         });
 
         let mut new_dag = dagron_core::DAG::new();
@@ -216,8 +205,14 @@ impl PyDAG {
         // Add non-redundant edges
         let sg = self.inner.to_serializable(|_| None);
         for edge in &sg.edges {
-            let from_idx = self.inner.resolve_name(&edge.from).map_err(errors::into_pyerr)?;
-            let to_idx = self.inner.resolve_name(&edge.to).map_err(errors::into_pyerr)?;
+            let from_idx = self
+                .inner
+                .resolve_name(&edge.from)
+                .map_err(errors::into_pyerr)?;
+            let to_idx = self
+                .inner
+                .resolve_name(&edge.to)
+                .map_err(errors::into_pyerr)?;
             if !redundant.contains(&(from_idx, to_idx)) {
                 new_dag
                     .add_edge(&edge.from, &edge.to, Some(edge.weight), edge.label.clone())
@@ -280,9 +275,7 @@ impl PyDAG {
             let keep: bool = predicate.call1((&name, payload_obj))?.extract()?;
             if keep {
                 let cloned = clone_payload(py, payload);
-                new_dag
-                    .add_node(name, cloned)
-                    .map_err(errors::into_pyerr)?;
+                new_dag.add_node(name, cloned).map_err(errors::into_pyerr)?;
             }
         }
 
@@ -346,9 +339,8 @@ impl PyDAG {
                     dagron_core::MergeConflict::KeepFirst => {}
                     dagron_core::MergeConflict::KeepSecond => {
                         let cloned = clone_payload(py, payload);
-                        let existing = new_dag
-                            .get_payload_mut(&name)
-                            .map_err(errors::into_pyerr)?;
+                        let existing =
+                            new_dag.get_payload_mut(&name).map_err(errors::into_pyerr)?;
                         *existing = cloned;
                     }
                     dagron_core::MergeConflict::Error => {
@@ -369,7 +361,10 @@ impl PyDAG {
         // Add edges from other (skip duplicates)
         let other_sg = other.inner.to_serializable(|_| None);
         for edge in &other_sg.edges {
-            if new_dag.has_edge(&edge.from, &edge.to).map_err(errors::into_pyerr)? {
+            if new_dag
+                .has_edge(&edge.from, &edge.to)
+                .map_err(errors::into_pyerr)?
+            {
                 continue;
             }
             new_dag
@@ -417,9 +412,7 @@ impl PyDAG {
                     Some(result.unbind())
                 };
 
-                let existing = new_dag
-                    .get_payload_mut(&name)
-                    .map_err(errors::into_pyerr)?;
+                let existing = new_dag.get_payload_mut(&name).map_err(errors::into_pyerr)?;
                 existing.payload = resolved_payload;
             } else {
                 let cloned = clone_payload(py, other_payload);
@@ -433,7 +426,10 @@ impl PyDAG {
         // Add edges from other (skip duplicates)
         let other_sg = other.inner.to_serializable(|_| None);
         for edge in &other_sg.edges {
-            if new_dag.has_edge(&edge.from, &edge.to).map_err(errors::into_pyerr)? {
+            if new_dag
+                .has_edge(&edge.from, &edge.to)
+                .map_err(errors::into_pyerr)?
+            {
                 continue;
             }
             new_dag

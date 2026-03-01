@@ -58,6 +58,7 @@ class ExecutionResult:
     timed_out: int = 0
     cancelled: int = 0
     total_duration_seconds: float = 0.0
+    trace: Any = None
 
 
 class DAGExecutor:
@@ -81,12 +82,14 @@ class DAGExecutor:
         costs: dict[str, float] | None = None,
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
+        enable_tracing: bool = False,
     ):
         self._dag = dag
         self._max_workers = max_workers
         self._costs = costs
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
+        self._enable_tracing = enable_tracing
 
     def execute(
         self,
@@ -107,14 +110,20 @@ class DAGExecutor:
         Returns:
             ExecutionResult with per-node results and aggregate counts.
         """
+        from dagron.tracing import ExecutionTrace, TraceEventType
+
         if self._max_workers is not None:
             plan = self._dag.execution_plan_constrained(self._max_workers, self._costs)
         else:
             plan = self._dag.execution_plan(self._costs)
 
+        trace = ExecutionTrace() if self._enable_tracing else None
         result = ExecutionResult()
         failed_nodes: set[str] = set()
         start_time = time.monotonic()
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_STARTED)
 
         # Get all ancestors for fail-fast skip detection
         ancestors_cache: dict[str, set[str]] = {}
@@ -128,6 +137,11 @@ class DAGExecutor:
         pool_workers = self._max_workers or plan.max_parallelism or 1
         with ThreadPoolExecutor(max_workers=pool_workers) as pool:
             for step in plan.steps:
+                if trace:
+                    trace.record(
+                        TraceEventType.STEP_STARTED, step_index=step.step_index
+                    )
+
                 # Check cancellation between steps
                 if cancel_event is not None and cancel_event.is_set():
                     for scheduled_node in step.nodes:
@@ -136,6 +150,14 @@ class DAGExecutor:
                             nr = NodeResult(name=name, status=NodeStatus.CANCELLED)
                             result.node_results[name] = nr
                             result.cancelled += 1
+                            if trace:
+                                trace.record(
+                                    TraceEventType.NODE_CANCELLED, node_name=name
+                                )
+                    if trace:
+                        trace.record(
+                            TraceEventType.STEP_COMPLETED, step_index=step.step_index
+                        )
                     continue
 
                 futures = {}
@@ -143,12 +165,18 @@ class DAGExecutor:
                     name = scheduled_node.node.name
 
                     # Skip if a dependency has failed
-                    if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
+                    if (
+                        self._fail_fast
+                        and failed_nodes
+                        and get_ancestors(name) & failed_nodes
+                    ):
                         nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
                         result.node_results[name] = nr
                         result.skipped += 1
                         if self._callbacks.on_skip:
                             self._callbacks.on_skip(name)
+                        if trace:
+                            trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
                         continue
 
                     task_fn = tasks.get(name)
@@ -158,8 +186,12 @@ class DAGExecutor:
                         result.skipped += 1
                         if self._callbacks.on_skip:
                             self._callbacks.on_skip(name)
+                        if trace:
+                            trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
                         continue
 
+                    if trace:
+                        trace.record(TraceEventType.NODE_STARTED, node_name=name)
                     futures[pool.submit(self._run_task, name, task_fn)] = name
 
                 # Wait for all futures in this step
@@ -176,14 +208,42 @@ class DAGExecutor:
                     result.node_results[name] = nr
                     if nr.status == NodeStatus.COMPLETED:
                         result.succeeded += 1
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_COMPLETED,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                            )
                     elif nr.status == NodeStatus.FAILED:
                         result.failed += 1
                         failed_nodes.add(name)
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_FAILED,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                                error=str(nr.error) if nr.error else None,
+                            )
                     elif nr.status == NodeStatus.TIMED_OUT:
                         result.timed_out += 1
                         failed_nodes.add(name)
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_TIMED_OUT,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                            )
+
+                if trace:
+                    trace.record(
+                        TraceEventType.STEP_COMPLETED, step_index=step.step_index
+                    )
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_COMPLETED)
 
         result.total_duration_seconds = time.monotonic() - start_time
+        result.trace = trace
         return result
 
     def _run_task(self, name: str, task_fn: Callable) -> NodeResult:
@@ -236,12 +296,14 @@ class AsyncDAGExecutor:
         costs: dict[str, float] | None = None,
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
+        enable_tracing: bool = False,
     ):
         self._dag = dag
         self._max_workers = max_workers
         self._costs = costs
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
+        self._enable_tracing = enable_tracing
 
     async def execute(
         self,
@@ -262,15 +324,21 @@ class AsyncDAGExecutor:
         Returns:
             ExecutionResult with per-node results and aggregate counts.
         """
+        from dagron.tracing import ExecutionTrace, TraceEventType
+
         if self._max_workers is not None:
             plan = self._dag.execution_plan_constrained(self._max_workers, self._costs)
         else:
             plan = self._dag.execution_plan(self._costs)
 
         semaphore = asyncio.Semaphore(self._max_workers) if self._max_workers else None
+        trace = ExecutionTrace() if self._enable_tracing else None
         result = ExecutionResult()
         failed_nodes: set[str] = set()
         start_time = time.monotonic()
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_STARTED)
 
         ancestors_cache: dict[str, set[str]] = {}
 
@@ -281,6 +349,9 @@ class AsyncDAGExecutor:
             return ancestors_cache[name]
 
         for step in plan.steps:
+            if trace:
+                trace.record(TraceEventType.STEP_STARTED, step_index=step.step_index)
+
             # Check cancellation between steps
             if cancel_event is not None and cancel_event.is_set():
                 for scheduled_node in step.nodes:
@@ -289,6 +360,12 @@ class AsyncDAGExecutor:
                         nr = NodeResult(name=name, status=NodeStatus.CANCELLED)
                         result.node_results[name] = nr
                         result.cancelled += 1
+                        if trace:
+                            trace.record(TraceEventType.NODE_CANCELLED, node_name=name)
+                if trace:
+                    trace.record(
+                        TraceEventType.STEP_COMPLETED, step_index=step.step_index
+                    )
                 continue
 
             coros = []
@@ -297,12 +374,18 @@ class AsyncDAGExecutor:
             for scheduled_node in step.nodes:
                 name = scheduled_node.node.name
 
-                if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
+                if (
+                    self._fail_fast
+                    and failed_nodes
+                    and get_ancestors(name) & failed_nodes
+                ):
                     nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
                     result.node_results[name] = nr
                     result.skipped += 1
                     if self._callbacks.on_skip:
                         self._callbacks.on_skip(name)
+                    if trace:
+                        trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
                     continue
 
                 task_fn = tasks.get(name)
@@ -312,8 +395,12 @@ class AsyncDAGExecutor:
                     result.skipped += 1
                     if self._callbacks.on_skip:
                         self._callbacks.on_skip(name)
+                    if trace:
+                        trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
                     continue
 
+                if trace:
+                    trace.record(TraceEventType.NODE_STARTED, node_name=name)
                 coros.append(self._run_task(name, task_fn, semaphore, timeout))
                 names.append(name)
 
@@ -323,14 +410,40 @@ class AsyncDAGExecutor:
                     result.node_results[name] = nr
                     if nr.status == NodeStatus.COMPLETED:
                         result.succeeded += 1
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_COMPLETED,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                            )
                     elif nr.status == NodeStatus.FAILED:
                         result.failed += 1
                         failed_nodes.add(name)
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_FAILED,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                                error=str(nr.error) if nr.error else None,
+                            )
                     elif nr.status == NodeStatus.TIMED_OUT:
                         result.timed_out += 1
                         failed_nodes.add(name)
+                        if trace:
+                            trace.record(
+                                TraceEventType.NODE_TIMED_OUT,
+                                node_name=name,
+                                duration=nr.duration_seconds,
+                            )
+
+            if trace:
+                trace.record(TraceEventType.STEP_COMPLETED, step_index=step.step_index)
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_COMPLETED)
 
         result.total_duration_seconds = time.monotonic() - start_time
+        result.trace = trace
         return result
 
     async def _run_task(
@@ -394,6 +507,7 @@ class IncrementalResult:
     reused: list[str] = field(default_factory=list)
     provenance: dict[str, list[str]] = field(default_factory=dict)
     total_duration_seconds: float = 0.0
+    trace: Any = None
 
 
 class IncrementalExecutor:
@@ -414,10 +528,12 @@ class IncrementalExecutor:
         dag: DAG,
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
+        enable_tracing: bool = False,
     ):
         self._dag = dag
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
+        self._enable_tracing = enable_tracing
         self._cache: dict[str, Any] = {}
 
     def execute(
@@ -435,8 +551,14 @@ class IncrementalExecutor:
         Returns:
             IncrementalResult with recomputed, early_cutoff, and reused lists.
         """
+        from dagron.tracing import ExecutionTrace, TraceEventType
+
         start_time = time.monotonic()
+        trace = ExecutionTrace() if self._enable_tracing else None
         result = IncrementalResult()
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_STARTED)
 
         # Get topological order for deterministic processing
         topo_order = [n.name for n in self._dag.topological_sort()]
@@ -447,13 +569,32 @@ class IncrementalExecutor:
                 task_fn = tasks.get(name)
                 if task_fn is None:
                     continue
+                if trace:
+                    trace.record(TraceEventType.NODE_STARTED, node_name=name)
                 nr = self._run_task(name, task_fn)
                 result.node_results[name] = nr
                 if nr.status == NodeStatus.COMPLETED:
                     self._cache[name] = nr.result
                     result.recomputed.append(name)
+                    if trace:
+                        trace.record(
+                            TraceEventType.NODE_COMPLETED,
+                            node_name=name,
+                            duration=nr.duration_seconds,
+                        )
+                elif trace:
+                    trace.record(
+                        TraceEventType.NODE_FAILED,
+                        node_name=name,
+                        duration=nr.duration_seconds,
+                        error=str(nr.error) if nr.error else None,
+                    )
+
+            if trace:
+                trace.record(TraceEventType.EXECUTION_COMPLETED)
 
             result.total_duration_seconds = time.monotonic() - start_time
+            result.trace = trace
             return result
 
         # Incremental execution
@@ -508,12 +649,20 @@ class IncrementalExecutor:
             if task_fn is None:
                 continue
 
+            if trace:
+                trace.record(TraceEventType.NODE_STARTED, node_name=name)
             nr = self._run_task(name, task_fn)
             result.node_results[name] = nr
 
             if nr.status == NodeStatus.COMPLETED:
                 old_result = self._cache.get(name)
                 result.recomputed.append(name)
+                if trace:
+                    trace.record(
+                        TraceEventType.NODE_COMPLETED,
+                        node_name=name,
+                        duration=nr.duration_seconds,
+                    )
 
                 try:
                     same = old_result == nr.result
@@ -530,8 +679,19 @@ class IncrementalExecutor:
             else:
                 # Failed -- propagate (downstream may need to react)
                 propagation_set.add(name)
+                if trace:
+                    trace.record(
+                        TraceEventType.NODE_FAILED,
+                        node_name=name,
+                        duration=nr.duration_seconds,
+                        error=str(nr.error) if nr.error else None,
+                    )
+
+        if trace:
+            trace.record(TraceEventType.EXECUTION_COMPLETED)
 
         result.total_duration_seconds = time.monotonic() - start_time
+        result.trace = trace
         return result
 
     def _run_task(self, name: str, task_fn: Callable) -> NodeResult:
