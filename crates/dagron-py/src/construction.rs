@@ -110,6 +110,7 @@ impl PyDAG {
             label,
         };
         self.inner.inner_graph_mut().add_edge(from_idx, to_idx, edge_data);
+        self.inner.bump_generation();
         Ok(())
     }
 

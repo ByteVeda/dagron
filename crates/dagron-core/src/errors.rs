@@ -1,4 +1,4 @@
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum DagronError {
     #[error("Cycle detected: {0}")]
     Cycle(String),

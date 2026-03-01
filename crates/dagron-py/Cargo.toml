@@ -10,4 +10,5 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 dagron-core = { path = "../dagron-core" }
+ahash = { workspace = true }
 pyo3 = { workspace = true }

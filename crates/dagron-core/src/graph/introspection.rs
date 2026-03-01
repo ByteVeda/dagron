@@ -122,7 +122,17 @@ impl<P> DAG<P> {
 
     /// Get all root nodes (nodes with no incoming edges).
     pub fn roots(&self) -> Vec<NodeId> {
-        self.graph
+        {
+            let mut cache = self.cache.lock().unwrap();
+            if cache.gen() == self.generation {
+                if let Some(cached) = cache.roots().cloned() {
+                    cache.record_hit();
+                    return cached;
+                }
+            }
+        }
+        let result: Vec<NodeId> = self
+            .graph
             .node_identifiers()
             .filter(|&idx| {
                 self.graph
@@ -134,12 +144,29 @@ impl<P> DAG<P> {
                 index: idx.index() as u32,
                 name: self.graph[idx].name.clone(),
             })
-            .collect()
+            .collect();
+        {
+            let mut cache = self.cache.lock().unwrap();
+            cache.record_miss();
+            cache.set_gen(self.generation);
+            cache.set_roots(result.clone());
+        }
+        result
     }
 
     /// Get all leaf nodes (nodes with no outgoing edges).
     pub fn leaves(&self) -> Vec<NodeId> {
-        self.graph
+        {
+            let mut cache = self.cache.lock().unwrap();
+            if cache.gen() == self.generation {
+                if let Some(cached) = cache.leaves().cloned() {
+                    cache.record_hit();
+                    return cached;
+                }
+            }
+        }
+        let result: Vec<NodeId> = self
+            .graph
             .node_identifiers()
             .filter(|&idx| {
                 self.graph
@@ -151,7 +178,14 @@ impl<P> DAG<P> {
                 index: idx.index() as u32,
                 name: self.graph[idx].name.clone(),
             })
-            .collect()
+            .collect();
+        {
+            let mut cache = self.cache.lock().unwrap();
+            cache.record_miss();
+            cache.set_gen(self.generation);
+            cache.set_leaves(result.clone());
+        }
+        result
     }
 
     /// Get all nodes in the graph.

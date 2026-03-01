@@ -5,6 +5,7 @@ pub mod introspection;
 pub mod node;
 pub mod payload;
 pub mod protocols;
+pub mod scheduling;
 pub mod toposort;
 pub mod validation;
 
@@ -15,6 +16,9 @@ use pyo3::prelude::*;
 fn dagron(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<dag::PyDAG>()?;
     m.add_class::<node::PyNodeId>()?;
+    m.add_class::<scheduling::PyScheduledNode>()?;
+    m.add_class::<scheduling::PyExecutionStep>()?;
+    m.add_class::<scheduling::PyExecutionPlan>()?;
 
     // Register exception hierarchy
     m.add("DagronError", m.py().get_type::<errors::DagronError>())?;
