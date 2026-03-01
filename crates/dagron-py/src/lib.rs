@@ -8,6 +8,7 @@ pub mod protocols;
 pub mod scheduling;
 pub mod serialization;
 pub mod toposort;
+pub mod transforms;
 pub mod validation;
 
 use pyo3::prelude::*;
