@@ -12,3 +12,4 @@ crate-type = ["cdylib", "lib"]
 dagron-core = { path = "../dagron-core" }
 ahash = { workspace = true }
 pyo3 = { workspace = true }
+serde_json = { workspace = true }

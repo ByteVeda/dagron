@@ -6,6 +6,7 @@ pub mod node;
 pub mod payload;
 pub mod protocols;
 pub mod scheduling;
+pub mod serialization;
 pub mod toposort;
 pub mod validation;
 
