@@ -5,7 +5,7 @@ import tempfile
 import pytest
 
 from dagron import DAG, DAGBuilder, NodeStatus
-from dagron.checkpoint import CheckpointExecutor
+from dagron.execution.checkpoint import CheckpointExecutor
 
 
 @pytest.fixture

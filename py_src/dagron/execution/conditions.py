@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from dagron._internal import DAG
-    from dagron.executor import ExecutionCallbacks, ExecutionResult
+    from dagron.execution._types import ExecutionCallbacks, ExecutionResult
 
 
 @dataclass(frozen=True)
@@ -120,7 +120,7 @@ class ConditionalExecutor:
         self._fail_fast = fail_fast
         self._enable_tracing = enable_tracing
 
-        from dagron.executor import ExecutionCallbacks
+        from dagron.execution._types import ExecutionCallbacks
 
         self._callbacks = callbacks or ExecutionCallbacks()
 
@@ -136,13 +136,13 @@ class ConditionalExecutor:
         Returns:
             ExecutionResult with per-node results.
         """
-        from dagron.executor import (
+        from dagron.execution._helpers import _run_sync_task
+        from dagron.execution._types import (
             ExecutionResult,
             NodeResult,
             NodeStatus,
-            _run_sync_task,
         )
-        from dagron.tracing import ExecutionTrace, TraceEventType
+        from dagron.execution.tracing import ExecutionTrace, TraceEventType
 
         trace = ExecutionTrace() if self._enable_tracing else None
         result = ExecutionResult()

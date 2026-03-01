@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from dagron._internal import DAG
-    from dagron.executor import ExecutionResult
+    from dagron.execution._types import ExecutionResult
 
 
 @dataclass(frozen=True)
@@ -200,7 +200,7 @@ class DataFramePipeline:
         Returns:
             List of schema violations across all nodes.
         """
-        from dagron.executor import NodeStatus
+        from dagron.execution._types import NodeStatus
 
         violations: list[SchemaViolation] = []
 

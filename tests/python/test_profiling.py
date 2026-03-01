@@ -169,7 +169,7 @@ def test_profile_to_dict():
 
 def test_profile_empty_result():
     dag = DAG()
-    from dagron.executor import ExecutionResult
+    from dagron.execution import ExecutionResult
 
     result = ExecutionResult()
     report = profile_execution(dag, result)

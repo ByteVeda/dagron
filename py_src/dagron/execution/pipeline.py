@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from dagron._internal import DAG
-    from dagron.executor import ExecutionCallbacks, ExecutionResult
+    from dagron.execution._types import ExecutionCallbacks, ExecutionResult
 
 @dataclass(frozen=True)
 class TaskSpec:
@@ -254,7 +254,7 @@ class Pipeline:
         Returns:
             ExecutionResult with per-node results.
         """
-        from dagron.executor import DAGExecutor
+        from dagron.execution.executor import DAGExecutor
 
         # For sync pipelines where tasks depend on each other's results,
         # we must execute sequentially to wire outputs as inputs.
@@ -291,7 +291,7 @@ class Pipeline:
         Returns:
             ExecutionResult with per-node results.
         """
-        from dagron.executor import AsyncDAGExecutor
+        from dagron.execution.executor import AsyncDAGExecutor
 
         executor = AsyncDAGExecutor(
             self._dag,
