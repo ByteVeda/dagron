@@ -20,6 +20,7 @@ impl<P> DAG<P> {
         };
         let idx = self.graph.add_node(node_data);
         self.name_to_index.insert(name.clone(), idx);
+        self.bump_generation();
         Ok(NodeId {
             index: idx.index() as u32,
             name,
@@ -59,6 +60,7 @@ impl<P> DAG<P> {
             label,
         };
         self.graph.add_edge(from_idx, to_idx, edge_data);
+        self.bump_generation();
         Ok(())
     }
 
@@ -69,6 +71,7 @@ impl<P> DAG<P> {
         let idx = self.resolve_name(name)?;
         self.graph.remove_node(idx);
         self.name_to_index.remove(name);
+        self.bump_generation();
         Ok(())
     }
 
@@ -86,6 +89,7 @@ impl<P> DAG<P> {
             .ok_or_else(|| DagronError::EdgeNotFound(from_node.to_string(), to_node.to_string()))?;
 
         self.graph.remove_edge(edge);
+        self.bump_generation();
         Ok(())
     }
 }
