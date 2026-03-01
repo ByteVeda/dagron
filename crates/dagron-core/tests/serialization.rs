@@ -65,7 +65,8 @@ fn json_round_trip_edge_labels() {
     let mut dag = DAG::new();
     dag.add_node("x".into(), ()).unwrap();
     dag.add_node("y".into(), ()).unwrap();
-    dag.add_edge("x", "y", None, Some("depends_on".to_string())).unwrap();
+    dag.add_edge("x", "y", None, Some("depends_on".to_string()))
+        .unwrap();
 
     let json = dag.to_json(|_| None).unwrap();
     let dag2: DAG = DAG::from_json(&json, |_| ()).unwrap();
@@ -183,7 +184,8 @@ fn to_mermaid_with_labels() {
     let mut dag = DAG::new();
     dag.add_node("x".into(), ()).unwrap();
     dag.add_node("y".into(), ()).unwrap();
-    dag.add_edge("x", "y", None, Some("depends".into())).unwrap();
+    dag.add_edge("x", "y", None, Some("depends".into()))
+        .unwrap();
 
     let mermaid = dag.to_mermaid();
     assert!(mermaid.contains("x -->|\"depends\"| y"));
@@ -241,7 +243,8 @@ fn bincode_preserves_edge_weights_and_labels() {
     let mut dag = DAG::new();
     dag.add_node("x".into(), ()).unwrap();
     dag.add_node("y".into(), ()).unwrap();
-    dag.add_edge("x", "y", Some(3.5), Some("dep".into())).unwrap();
+    dag.add_edge("x", "y", Some(3.5), Some("dep".into()))
+        .unwrap();
 
     let bytes = dag.to_bincode(|_| None).unwrap();
     let dag2: DAG = DAG::from_bincode(&bytes, |_| ()).unwrap();
@@ -266,4 +269,78 @@ fn bincode_streaming_round_trip() {
     assert_eq!(dag2.edge_count(), 4);
     assert!(dag2.has_edge("a", "b").unwrap());
     assert!(dag2.has_edge("c", "d").unwrap());
+}
+
+#[test]
+fn bincode_streaming_round_trip_large() {
+    let mut dag: DAG<i32> = DAG::new();
+    let n = 10_000;
+    for i in 0..n {
+        dag.add_node(format!("node_{i}"), i as i32).unwrap();
+    }
+    for i in 0..(n - 1) {
+        dag.add_edge(
+            &format!("node_{i}"),
+            &format!("node_{}", i + 1),
+            Some(i as f64 * 0.1),
+            Some(format!("edge_{i}")),
+        )
+        .unwrap();
+    }
+
+    let bytes = dag
+        .to_bincode(|p| Some(serde_json::Value::Number((*p).into())))
+        .unwrap();
+    let dag2: DAG<i32> = DAG::from_bincode(&bytes, |v| {
+        v.and_then(|val| val.as_i64())
+            .map(|n| n as i32)
+            .unwrap_or(0)
+    })
+    .unwrap();
+
+    assert_eq!(dag2.node_count(), n);
+    assert_eq!(dag2.edge_count(), n - 1);
+
+    // Spot-check payloads
+    assert_eq!(*dag2.get_payload("node_0").unwrap(), 0);
+    assert_eq!(*dag2.get_payload("node_9999").unwrap(), 9999);
+
+    // Spot-check edges
+    assert!(dag2.has_edge("node_0", "node_1").unwrap());
+    assert!(dag2.has_edge("node_9998", "node_9999").unwrap());
+}
+
+#[test]
+fn bincode_deterministic_output() {
+    let mut dag = DAG::new();
+    dag.add_node("a".into(), ()).unwrap();
+    dag.add_node("b".into(), ()).unwrap();
+    dag.add_node("c".into(), ()).unwrap();
+    dag.add_edge("a", "b", Some(1.5), Some("x".into()))
+        .unwrap();
+    dag.add_edge("b", "c", None, None).unwrap();
+
+    let bytes1 = dag.to_bincode(|_| None).unwrap();
+    let bytes2 = dag.to_bincode(|_| None).unwrap();
+    assert_eq!(bytes1, bytes2, "Two serializations of the same graph must be byte-identical");
+}
+
+#[test]
+fn bincode_size_matches_actual() {
+    let mut dag: DAG<i32> = DAG::new();
+    for i in 0..500 {
+        dag.add_node(format!("n_{i}"), i).unwrap();
+    }
+    for i in 0..499 {
+        dag.add_edge(&format!("n_{i}"), &format!("n_{}", i + 1), Some(i as f64), None)
+            .unwrap();
+    }
+
+    let predicted = dag
+        .bincode_size(|p| Some(serde_json::Value::Number((*p).into())))
+        .unwrap();
+    let actual = dag
+        .to_bincode(|p| Some(serde_json::Value::Number((*p).into())))
+        .unwrap();
+    assert_eq!(predicted, actual.len(), "bincode_size() must equal to_bincode().len()");
 }

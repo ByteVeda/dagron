@@ -24,7 +24,10 @@ impl PyDAG {
 
     /// Set a node's payload by name.
     pub fn __setitem__(&mut self, name: &str, value: Py<PyAny>) -> PyResult<()> {
-        let p = self.inner.get_payload_mut(name).map_err(errors::into_pyerr)?;
+        let p = self
+            .inner
+            .get_payload_mut(name)
+            .map_err(errors::into_pyerr)?;
         p.payload = Some(value);
         Ok(())
     }

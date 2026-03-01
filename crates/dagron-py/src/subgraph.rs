@@ -75,7 +75,12 @@ impl PyDAG {
         // Resolve root and compute neighborhood
         let root_idx = self.inner.resolve_name(&root).map_err(errors::into_pyerr)?;
         let neighborhood = py.allow_threads(|| {
-            dagron_core::algorithms::depth_neighborhood(self.inner.inner_graph(), root_idx, depth, dir)
+            dagron_core::algorithms::depth_neighborhood(
+                self.inner.inner_graph(),
+                root_idx,
+                depth,
+                dir,
+            )
         });
 
         let mut new_dag = dagron_core::DAG::new();

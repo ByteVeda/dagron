@@ -50,7 +50,11 @@ fn execution_plan_diamond_structure() {
 
     // Step 1: b, c (parallel)
     assert_eq!(plan.steps[1].nodes.len(), 2);
-    let step1_names: Vec<&str> = plan.steps[1].nodes.iter().map(|n| n.node.name.as_str()).collect();
+    let step1_names: Vec<&str> = plan.steps[1]
+        .nodes
+        .iter()
+        .map(|n| n.node.name.as_str())
+        .collect();
     assert!(step1_names.contains(&"b"));
     assert!(step1_names.contains(&"c"));
 

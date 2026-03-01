@@ -1,5 +1,11 @@
 import pytest
-from dagron import DAG, NodeId, DuplicateNodeError, NodeNotFoundError, EdgeNotFoundError, CycleError
+from dagron import (
+    NodeId,
+    DuplicateNodeError,
+    NodeNotFoundError,
+    EdgeNotFoundError,
+    CycleError,
+)
 
 
 class TestAddNode:
@@ -11,7 +17,7 @@ class TestAddNode:
 
     def test_add_node_with_payload(self, empty_dag):
         payload = {"key": "value"}
-        node = empty_dag.add_node("a", payload=payload)
+        empty_dag.add_node("a", payload=payload)
         assert empty_dag.get_payload("a") == payload
 
     def test_add_node_with_metadata(self, empty_dag):

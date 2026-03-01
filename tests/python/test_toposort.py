@@ -1,7 +1,3 @@
-import pytest
-from dagron import DAG
-
-
 def is_valid_topological_order(dag, order):
     """Verify that every edge (u, v) has u before v in the order."""
     names = [n.name for n in order]

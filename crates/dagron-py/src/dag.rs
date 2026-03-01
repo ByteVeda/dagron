@@ -9,6 +9,12 @@ pub struct PyDAG {
     pub(crate) inner: dagron_core::DAG<PyNodePayload>,
 }
 
+impl Default for PyDAG {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[pymethods]
 impl PyDAG {
     #[new]

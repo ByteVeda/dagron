@@ -135,6 +135,125 @@ class TestToDot:
         assert '"b";' in dot  # no attrs for b
 
 
+class TestBinaryRoundTrip:
+    def test_binary_round_trip(self, diamond_dag):
+        data = diamond_dag.to_bytes()
+        dag2 = DAG.from_bytes(data)
+        assert dag2.node_count() == 4
+        assert dag2.edge_count() == 4
+        assert dag2.has_edge("a", "b")
+        assert dag2.has_edge("c", "d")
+
+    def test_binary_with_payloads(self):
+        dag = DAG()
+        dag.add_node("a", payload=42)
+        dag.add_node("b", payload="hello")
+        dag.add_edge("a", "b")
+
+        data = dag.to_bytes(payload_serializer=lambda p: p)
+        dag2 = DAG.from_bytes(data, payload_deserializer=lambda v: v)
+        assert dag2.get_payload("a") == 42
+        assert dag2.get_payload("b") == "hello"
+
+    def test_binary_round_trip_large(self):
+        dag = DAG()
+        n = 1000
+        for i in range(n):
+            dag.add_node(f"node_{i}", payload={"index": i, "label": f"item_{i}"})
+        for i in range(n - 1):
+            dag.add_edge(f"node_{i}", f"node_{i + 1}", weight=i * 0.1)
+
+        data = dag.to_bytes(payload_serializer=lambda p: p)
+        dag2 = DAG.from_bytes(data, payload_deserializer=lambda v: v)
+
+        assert dag2.node_count() == n
+        assert dag2.edge_count() == n - 1
+        assert dag2.get_payload("node_0") == {"index": 0, "label": "item_0"}
+        assert dag2.get_payload("node_999") == {"index": 999, "label": "item_999"}
+        assert dag2.has_edge("node_0", "node_1")
+        assert dag2.has_edge("node_998", "node_999")
+
+
+class TestSaveLoad:
+    def test_save_load_round_trip(self, tmp_path, diamond_dag):
+        path = str(tmp_path / "test.dag")
+        diamond_dag.save(path)
+        dag2 = DAG.load(path)
+        assert dag2.node_count() == 4
+        assert dag2.edge_count() == 4
+        assert dag2.has_edge("a", "b")
+        assert dag2.has_edge("c", "d")
+
+    def test_save_load_with_payloads(self, tmp_path):
+        dag = DAG()
+        dag.add_node("a", payload={"key": "value"})
+        dag.add_node("b", payload=[1, 2, 3])
+        dag.add_edge("a", "b", weight=2.5, label="dep")
+
+        path = str(tmp_path / "payloads.dag")
+        dag.save(path, payload_serializer=lambda p: p)
+        dag2 = DAG.load(path, payload_deserializer=lambda v: v)
+
+        assert dag2.get_payload("a") == {"key": "value"}
+        assert dag2.get_payload("b") == [1, 2, 3]
+        assert dag2.has_edge("a", "b")
+
+    def test_save_load_edge_weights(self, tmp_path):
+        dag = DAG()
+        dag.add_nodes(["x", "y"])
+        dag.add_edge("x", "y", weight=3.5, label="test")
+
+        path = str(tmp_path / "edges.dag")
+        dag.save(path)
+        dag2 = DAG.load(path)
+
+        json_str = dag2.to_json()
+        import json
+
+        data = json.loads(json_str)
+        assert data["edges"][0]["weight"] == pytest.approx(3.5)
+        assert data["edges"][0]["label"] == "test"
+
+    def test_load_nonexistent_file(self):
+        with pytest.raises(DagronError, match="Failed to open file"):
+            DAG.load("/nonexistent/path/to/file.dag")
+
+    def test_save_load_large_graph(self, tmp_path):
+        dag = DAG()
+        for i in range(100):
+            dag.add_node(f"n{i}")
+        for i in range(99):
+            dag.add_edge(f"n{i}", f"n{i + 1}")
+
+        path = str(tmp_path / "large.dag")
+        dag.save(path)
+        dag2 = DAG.load(path)
+        assert dag2.node_count() == 100
+        assert dag2.edge_count() == 99
+
+    def test_save_load_empty_graph(self, tmp_path):
+        dag = DAG()
+        path = str(tmp_path / "empty.dag")
+        dag.save(path)
+        dag2 = DAG.load(path)
+        assert dag2.node_count() == 0
+        assert dag2.edge_count() == 0
+
+    def test_save_load_large_streaming(self, tmp_path):
+        dag = DAG()
+        n = 5000
+        for i in range(n):
+            dag.add_node(f"node_{i}")
+        for i in range(n - 1):
+            dag.add_edge(f"node_{i}", f"node_{i + 1}")
+
+        path = str(tmp_path / "large_streaming.dag")
+        dag.save(path)
+        dag2 = DAG.load(path)
+        assert dag2.node_count() == n
+        assert dag2.edge_count() == n - 1
+
+
 class TestToMermaid:
     def test_to_mermaid_diamond(self, diamond_dag):
         mermaid = diamond_dag.to_mermaid()

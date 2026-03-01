@@ -25,10 +25,26 @@ fn build_reachability_index() {
 #[test]
 fn can_reach_forward() {
     let dag = diamond_dag();
-    let a = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "a").unwrap();
-    let d = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "d").unwrap();
-    let b = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "b").unwrap();
-    let c = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "c").unwrap();
+    let a = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "a")
+        .unwrap();
+    let d = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "d")
+        .unwrap();
+    let b = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "b")
+        .unwrap();
+    let c = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "c")
+        .unwrap();
 
     let idx = dag.build_reachability_index().unwrap();
     assert!(idx.can_reach(a, d));
@@ -41,10 +57,26 @@ fn can_reach_forward() {
 #[test]
 fn can_reach_reverse_false() {
     let dag = diamond_dag();
-    let a = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "a").unwrap();
-    let d = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "d").unwrap();
-    let b = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "b").unwrap();
-    let c = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "c").unwrap();
+    let a = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "a")
+        .unwrap();
+    let d = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "d")
+        .unwrap();
+    let b = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "b")
+        .unwrap();
+    let c = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "c")
+        .unwrap();
 
     let idx = dag.build_reachability_index().unwrap();
     assert!(!idx.can_reach(d, a));
@@ -55,7 +87,11 @@ fn can_reach_reverse_false() {
 #[test]
 fn self_reachability() {
     let dag = diamond_dag();
-    let a = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "a").unwrap();
+    let a = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "a")
+        .unwrap();
     let idx = dag.build_reachability_index().unwrap();
     assert!(idx.can_reach(a, a));
 }
@@ -63,7 +99,11 @@ fn self_reachability() {
 #[test]
 fn reachable_from() {
     let dag = diamond_dag();
-    let a = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "a").unwrap();
+    let a = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "a")
+        .unwrap();
     let idx = dag.build_reachability_index().unwrap();
     let reachable = idx.reachable_from(a);
     assert_eq!(reachable.len(), 3); // b, c, d
@@ -72,7 +112,11 @@ fn reachable_from() {
 #[test]
 fn ancestors_of() {
     let dag = diamond_dag();
-    let d = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "d").unwrap();
+    let d = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "d")
+        .unwrap();
     let idx = dag.build_reachability_index().unwrap();
     let ancestors = idx.ancestors_of(d);
     assert_eq!(ancestors.len(), 3); // a, b, c
@@ -84,8 +128,16 @@ fn disconnected_components() {
     dag.add_node("x".into(), ()).unwrap();
     dag.add_node("y".into(), ()).unwrap();
 
-    let x = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "x").unwrap();
-    let y = dag.inner_graph().node_indices().find(|&i| dag.inner_graph()[i].name == "y").unwrap();
+    let x = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "x")
+        .unwrap();
+    let y = dag
+        .inner_graph()
+        .node_indices()
+        .find(|&i| dag.inner_graph()[i].name == "y")
+        .unwrap();
 
     let idx = dag.build_reachability_index().unwrap();
     assert!(!idx.can_reach(x, y));

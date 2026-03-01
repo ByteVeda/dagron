@@ -10,8 +10,7 @@ fn task_dag() -> DAG {
     dag.add_edge("task_build", "task_test", None, None).unwrap();
     dag.add_edge("task_test", "task_deploy", None, None)
         .unwrap();
-    dag.add_edge("setup_env", "task_build", None, None)
-        .unwrap();
+    dag.add_edge("setup_env", "task_build", None, None).unwrap();
     dag
 }
 

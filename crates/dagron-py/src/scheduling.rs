@@ -77,7 +77,10 @@ fn to_ahash(map: Option<HashMap<String, f64>>) -> ahash::AHashMap<String, f64> {
     map.map(|m| m.into_iter().collect()).unwrap_or_default()
 }
 
-fn convert_plan(py: Python<'_>, plan: dagron_core::ExecutionPlanResult) -> PyResult<PyExecutionPlan> {
+fn convert_plan(
+    py: Python<'_>,
+    plan: dagron_core::ExecutionPlanResult,
+) -> PyResult<PyExecutionPlan> {
     let steps_list = pyo3::types::PyList::empty(py);
     for step in plan.steps {
         let nodes_list = pyo3::types::PyList::empty(py);

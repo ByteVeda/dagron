@@ -46,13 +46,15 @@ def complex_dag():
     """
     dag = DAG()
     dag.add_nodes(["a", "b", "c", "d", "e", "f"])
-    dag.add_edges([
-        ("a", "b"),
-        ("a", "c"),
-        ("b", "d"),
-        ("b", "e"),
-        ("c", "e"),
-        ("d", "f"),
-        ("e", "f"),
-    ])
+    dag.add_edges(
+        [
+            ("a", "b"),
+            ("a", "c"),
+            ("b", "d"),
+            ("b", "e"),
+            ("c", "e"),
+            ("d", "f"),
+            ("e", "f"),
+        ]
+    )
     return dag

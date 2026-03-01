@@ -28,7 +28,10 @@ impl PyDAG {
         metadata: Option<Py<PyAny>>,
     ) -> PyResult<PyNodeId> {
         let py_payload = PyNodePayload { payload, metadata };
-        let node_id = self.inner.add_node(name, py_payload).map_err(errors::into_pyerr)?;
+        let node_id = self
+            .inner
+            .add_node(name, py_payload)
+            .map_err(errors::into_pyerr)?;
         Ok(node_id.into())
     }
 
@@ -83,8 +86,14 @@ impl PyDAG {
         label: Option<String>,
     ) -> PyResult<()> {
         // Resolve names first while we have &self
-        let from_idx = self.inner.resolve_name(from_node).map_err(errors::into_pyerr)?;
-        let to_idx = self.inner.resolve_name(to_node).map_err(errors::into_pyerr)?;
+        let from_idx = self
+            .inner
+            .resolve_name(from_node)
+            .map_err(errors::into_pyerr)?;
+        let to_idx = self
+            .inner
+            .resolve_name(to_node)
+            .map_err(errors::into_pyerr)?;
 
         // Check for cycle — release GIL for the graph traversal
         let graph_ref = self.inner.inner_graph();
@@ -97,19 +106,23 @@ impl PyDAG {
                 .iter()
                 .map(|&idx| self.inner.inner_graph()[idx].name.clone())
                 .collect();
-            return Err(errors::into_pyerr(dagron_core::DagronError::Cycle(format!(
-                "Edge {} -> {} would create a cycle: {}",
-                from_node,
-                to_node,
-                names.join(" -> ")
-            ))));
+            return Err(errors::into_pyerr(dagron_core::DagronError::Cycle(
+                format!(
+                    "Edge {} -> {} would create a cycle: {}",
+                    from_node,
+                    to_node,
+                    names.join(" -> ")
+                ),
+            )));
         }
 
         let edge_data = dagron_core::EdgeData {
             weight: weight.unwrap_or(1.0),
             label,
         };
-        self.inner.inner_graph_mut().add_edge(from_idx, to_idx, edge_data);
+        self.inner
+            .inner_graph_mut()
+            .add_edge(from_idx, to_idx, edge_data);
         self.inner.bump_generation();
         Ok(())
     }
@@ -163,7 +176,9 @@ impl PyDAG {
     ///     NodeNotFoundError: If either node doesn't exist.
     ///     EdgeNotFoundError: If no edge exists between the nodes.
     pub fn remove_edge(&mut self, from_node: &str, to_node: &str) -> PyResult<()> {
-        self.inner.remove_edge(from_node, to_node).map_err(errors::into_pyerr)
+        self.inner
+            .remove_edge(from_node, to_node)
+            .map_err(errors::into_pyerr)
     }
 
     /// Create a new DAGBuilder for fluent DAG construction.

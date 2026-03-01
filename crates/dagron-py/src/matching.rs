@@ -16,11 +16,7 @@ impl PyDAG {
     ///
     /// Raises:
     ///     GraphError: If the regex pattern is invalid.
-    pub fn nodes_matching_regex(
-        &self,
-        py: Python<'_>,
-        pattern: String,
-    ) -> PyResult<Vec<PyNodeId>> {
+    pub fn nodes_matching_regex(&self, py: Python<'_>, pattern: String) -> PyResult<Vec<PyNodeId>> {
         let inner_ref = &self.inner;
         let nodes = py
             .allow_threads(|| inner_ref.nodes_matching_regex(&pattern))
@@ -38,11 +34,7 @@ impl PyDAG {
     ///
     /// Raises:
     ///     GraphError: If the pattern is invalid.
-    pub fn nodes_matching_glob(
-        &self,
-        py: Python<'_>,
-        pattern: String,
-    ) -> PyResult<Vec<PyNodeId>> {
+    pub fn nodes_matching_glob(&self, py: Python<'_>, pattern: String) -> PyResult<Vec<PyNodeId>> {
         let inner_ref = &self.inner;
         let nodes = py
             .allow_threads(|| inner_ref.nodes_matching_glob(&pattern))

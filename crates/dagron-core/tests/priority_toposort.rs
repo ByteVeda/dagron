@@ -32,8 +32,12 @@ fn priority_sort_no_priorities() {
     // Without priorities, alphabetical tiebreak
     assert_eq!(order[0], "a");
     assert_eq!(order.len(), 4);
-    assert!(order.iter().position(|n| n == "b").unwrap() < order.iter().position(|n| n == "d").unwrap());
-    assert!(order.iter().position(|n| n == "c").unwrap() < order.iter().position(|n| n == "d").unwrap());
+    assert!(
+        order.iter().position(|n| n == "b").unwrap() < order.iter().position(|n| n == "d").unwrap()
+    );
+    assert!(
+        order.iter().position(|n| n == "c").unwrap() < order.iter().position(|n| n == "d").unwrap()
+    );
 }
 
 #[test]

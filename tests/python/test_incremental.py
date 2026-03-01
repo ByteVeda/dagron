@@ -1,7 +1,7 @@
 """Tests for Phase 7: reverse, collapse, dominator tree, binary serialization, incremental."""
 
 import dagron
-from dagron import DAG, IncrementalExecutor, IncrementalResult
+from dagron import DAG, IncrementalExecutor
 
 
 def diamond_dag():
@@ -227,6 +227,7 @@ def test_incremental_changed_nodes_re_executes_dirty():
         def task():
             call_count[name] += 1
             return value
+
         return task
 
     executor = IncrementalExecutor(dag)
@@ -329,6 +330,7 @@ def test_incremental_reused_nodes():
         def task():
             call_count[name] += 1
             return value
+
         return task
 
     executor = IncrementalExecutor(dag)

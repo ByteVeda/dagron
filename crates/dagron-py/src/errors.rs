@@ -1,12 +1,42 @@
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 
-create_exception!(dagron, DagronError, PyException, "Base exception for all dagron errors.");
-create_exception!(dagron, CycleError, DagronError, "Raised when an operation would create a cycle in the DAG.");
-create_exception!(dagron, NodeNotFoundError, DagronError, "Raised when a referenced node does not exist.");
-create_exception!(dagron, DuplicateNodeError, DagronError, "Raised when adding a node with a name that already exists.");
-create_exception!(dagron, EdgeNotFoundError, DagronError, "Raised when a referenced edge does not exist.");
-create_exception!(dagron, GraphError, DagronError, "Raised for general graph operation errors.");
+create_exception!(
+    dagron,
+    DagronError,
+    PyException,
+    "Base exception for all dagron errors."
+);
+create_exception!(
+    dagron,
+    CycleError,
+    DagronError,
+    "Raised when an operation would create a cycle in the DAG."
+);
+create_exception!(
+    dagron,
+    NodeNotFoundError,
+    DagronError,
+    "Raised when a referenced node does not exist."
+);
+create_exception!(
+    dagron,
+    DuplicateNodeError,
+    DagronError,
+    "Raised when adding a node with a name that already exists."
+);
+create_exception!(
+    dagron,
+    EdgeNotFoundError,
+    DagronError,
+    "Raised when a referenced edge does not exist."
+);
+create_exception!(
+    dagron,
+    GraphError,
+    DagronError,
+    "Raised for general graph operation errors."
+);
 
 /// Convert a DagronError into a PyErr.
 pub fn into_pyerr(err: dagron_core::DagronError) -> pyo3::PyErr {

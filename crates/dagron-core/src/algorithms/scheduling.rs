@@ -99,8 +99,7 @@ pub fn critical_path<P>(
     let mut path = vec![start];
     let mut current = start;
     loop {
-        let successors: Vec<InternalNodeIndex> =
-            graph.edges(current).map(|e| e.target()).collect();
+        let successors: Vec<InternalNodeIndex> = graph.edges(current).map(|e| e.target()).collect();
         if successors.is_empty() {
             break;
         }
@@ -167,11 +166,7 @@ pub fn max_parallelism_schedule<P>(
         total_nodes,
         max_parallelism: max_par,
         estimated_makespan: cp.1,
-        critical_path: if cp.0.is_empty() {
-            None
-        } else {
-            Some(cp.0)
-        },
+        critical_path: if cp.0.is_empty() { None } else { Some(cp.0) },
     })
 }
 
@@ -219,7 +214,11 @@ pub fn resource_constrained_schedule<P>(
     for (&node, &deg) in &in_degree {
         if deg == 0 {
             let bl = bottom_levels.get(&node).copied().unwrap_or(0.0);
-            ready.push((OrdF64(bl), std::cmp::Reverse(graph[node].name.clone()), node));
+            ready.push((
+                OrdF64(bl),
+                std::cmp::Reverse(graph[node].name.clone()),
+                node,
+            ));
         }
     }
 
@@ -330,11 +329,7 @@ pub fn resource_constrained_schedule<P>(
         total_nodes,
         max_parallelism: max_par,
         estimated_makespan: cp.1,
-        critical_path: if cp.0.is_empty() {
-            None
-        } else {
-            Some(cp.0)
-        },
+        critical_path: if cp.0.is_empty() { None } else { Some(cp.0) },
     })
 }
 

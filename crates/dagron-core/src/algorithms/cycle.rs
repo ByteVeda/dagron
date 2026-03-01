@@ -57,8 +57,7 @@ pub fn find_cycles<P>(graph: &InternalGraph<P>) -> Vec<Vec<InternalNodeIndex>> {
     let sccs = petgraph::algo::tarjan_scc(graph);
     sccs.into_iter()
         .filter(|scc| {
-            scc.len() > 1
-                || (scc.len() == 1 && graph.find_edge(scc[0], scc[0]).is_some())
+            scc.len() > 1 || (scc.len() == 1 && graph.find_edge(scc[0], scc[0]).is_some())
         })
         .collect()
 }
