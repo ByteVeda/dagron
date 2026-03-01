@@ -1,7 +1,10 @@
-use crate::types::{InternalGraph, InternalNodeIndex};
+use ahash::AHashSet;
+use std::collections::VecDeque;
+
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use std::collections::{HashSet, VecDeque};
+
+use crate::types::{InternalGraph, InternalNodeIndex};
 
 /// Find all ancestors of a node (BFS on reversed edges).
 /// Does not include the node itself.
@@ -20,7 +23,7 @@ fn bfs_directed<P>(
     start: InternalNodeIndex,
     direction: Direction,
 ) -> Vec<InternalNodeIndex> {
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     let mut queue = VecDeque::new();
     let mut result = Vec::new();
 

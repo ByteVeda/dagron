@@ -65,6 +65,12 @@ impl<P> DAG<P> {
     /// Bump the generation counter and invalidate stale cache.
     pub fn bump_generation(&mut self) {
         self.generation += 1;
+        self.cache.write().unwrap().invalidate();
+    }
+
+    /// Set the generation counter to a specific value.
+    pub fn set_generation(&mut self, gen: u64) {
+        self.generation = gen;
     }
 
     /// Get the number of cache hits.
@@ -85,6 +91,61 @@ impl<P> DAG<P> {
     /// Clear all cached results.
     pub fn clear_cache(&self) {
         self.cache.write().unwrap().invalidate();
+    }
+
+    /// Cache helper for infallible computations (e.g., roots, leaves).
+    pub(crate) fn with_cache<T: Clone>(
+        &self,
+        getter: impl FnOnce(&cache::DagCache) -> Option<&T>,
+        setter: impl FnOnce(&mut cache::DagCache, T),
+        compute: impl FnOnce() -> T,
+    ) -> T {
+        {
+            let cache = self.cache.read().unwrap();
+            if cache.gen() == self.generation {
+                if let Some(cached) = getter(&cache).cloned() {
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
+                    return cached;
+                }
+            }
+        }
+        let result = compute();
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.record_miss();
+            cache.set_gen(self.generation);
+            setter(&mut cache, result.clone());
+        }
+        result
+    }
+
+    /// Cache helper for fallible computations (e.g., topo sort).
+    /// Only caches `Ok` results; errors are always recomputed.
+    pub(crate) fn with_cache_result<T: Clone>(
+        &self,
+        getter: impl FnOnce(&cache::DagCache) -> Option<&T>,
+        setter: impl FnOnce(&mut cache::DagCache, T),
+        compute: impl FnOnce() -> Result<T, crate::errors::DagronError>,
+    ) -> Result<T, crate::errors::DagronError> {
+        {
+            let cache = self.cache.read().unwrap();
+            if cache.gen() == self.generation {
+                if let Some(cached) = getter(&cache).cloned() {
+                    drop(cache);
+                    self.cache.write().unwrap().record_hit();
+                    return Ok(cached);
+                }
+            }
+        }
+        let result = compute()?;
+        {
+            let mut cache = self.cache.write().unwrap();
+            cache.record_miss();
+            cache.set_gen(self.generation);
+            setter(&mut cache, result.clone());
+        }
+        Ok(result)
     }
 }
 

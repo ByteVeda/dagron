@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use ahash::AHashMap;
 
 use crate::algorithms;
@@ -58,7 +56,7 @@ impl<P> DAG<P> {
         &self,
         from: &str,
         to: &str,
-        costs: &HashMap<String, f64>,
+        costs: &AHashMap<String, f64>,
     ) -> Result<Option<(Vec<NodeId>, f64)>, DagronError> {
         let from_idx = self.resolve_name(from)?;
         let to_idx = self.resolve_name(to)?;

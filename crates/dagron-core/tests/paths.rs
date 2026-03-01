@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use ahash::AHashMap;
 
 use dagron_core::{DagronError, DAG};
 
@@ -116,7 +116,7 @@ fn shortest_path_disconnected() {
 #[test]
 fn longest_path_linear() {
     let dag = linear_dag();
-    let costs = HashMap::new();
+    let costs = AHashMap::new();
     let (path, cost) = dag.longest_path("a", "c", &costs).unwrap().unwrap();
     let names: Vec<&str> = path.iter().map(|n| n.name.as_str()).collect();
     assert_eq!(names, vec!["a", "b", "c"]);
@@ -126,7 +126,7 @@ fn longest_path_linear() {
 #[test]
 fn longest_path_diamond_weighted() {
     let dag = diamond_dag();
-    let mut costs = HashMap::new();
+    let mut costs = AHashMap::new();
     costs.insert("a".to_string(), 1.0);
     costs.insert("b".to_string(), 10.0);
     costs.insert("c".to_string(), 2.0);
@@ -141,14 +141,14 @@ fn longest_path_diamond_weighted() {
 #[test]
 fn longest_path_no_path() {
     let dag = linear_dag();
-    let costs = HashMap::new();
+    let costs = AHashMap::new();
     assert!(dag.longest_path("c", "a", &costs).unwrap().is_none());
 }
 
 #[test]
 fn longest_path_nonexistent_node() {
     let dag = linear_dag();
-    let costs = HashMap::new();
+    let costs = AHashMap::new();
     let result = dag.longest_path("a", "z", &costs);
     assert!(matches!(result, Err(DagronError::NodeNotFound(_))));
 }

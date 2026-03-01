@@ -1,7 +1,8 @@
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
+use std::collections::VecDeque;
+
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use std::collections::{HashSet, VecDeque};
 
 use crate::types::{InternalGraph, InternalNodeIndex};
 
@@ -15,7 +16,7 @@ pub fn all_paths<P>(
 ) -> Vec<Vec<InternalNodeIndex>> {
     let mut results = Vec::new();
     let mut path = vec![from];
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     visited.insert(from);
     all_paths_dfs(graph, to, &mut path, &mut visited, &mut results, limit);
     results
@@ -25,7 +26,7 @@ fn all_paths_dfs<P>(
     graph: &InternalGraph<P>,
     target: InternalNodeIndex,
     path: &mut Vec<InternalNodeIndex>,
-    visited: &mut HashSet<InternalNodeIndex>,
+    visited: &mut AHashSet<InternalNodeIndex>,
     results: &mut Vec<Vec<InternalNodeIndex>>,
     limit: Option<usize>,
 ) {
@@ -74,7 +75,7 @@ pub fn shortest_path<P>(
         return Some(vec![from]);
     }
 
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     visited.insert(from);
     let mut queue = VecDeque::new();
     queue.push_back(from);

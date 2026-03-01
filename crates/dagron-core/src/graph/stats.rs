@@ -5,7 +5,6 @@ use petgraph::Direction;
 
 use crate::algorithms;
 use crate::errors::DagronError;
-use crate::types::InternalNodeIndex;
 
 use super::DAG;
 
@@ -152,29 +151,19 @@ fn count_weak_components<P>(graph: &crate::types::InternalGraph<P>) -> usize {
         visited.insert(start);
 
         while let Some(node) = queue.pop_front() {
-            // Visit neighbors in both directions (undirected)
-            for neighbor in undirected_neighbors(graph, node) {
-                if visited.insert(neighbor) {
-                    queue.push_back(neighbor);
+            // Visit neighbors in both directions (undirected), inlined to avoid per-node Vec allocation
+            for e in graph.edges_directed(node, Direction::Outgoing) {
+                if visited.insert(e.target()) {
+                    queue.push_back(e.target());
+                }
+            }
+            for e in graph.edges_directed(node, Direction::Incoming) {
+                if visited.insert(e.source()) {
+                    queue.push_back(e.source());
                 }
             }
         }
     }
 
     components
-}
-
-/// Get all neighbors of a node ignoring edge direction.
-fn undirected_neighbors<P>(
-    graph: &crate::types::InternalGraph<P>,
-    node: InternalNodeIndex,
-) -> Vec<InternalNodeIndex> {
-    let mut neighbors = Vec::new();
-    for e in graph.edges_directed(node, Direction::Outgoing) {
-        neighbors.push(e.target());
-    }
-    for e in graph.edges_directed(node, Direction::Incoming) {
-        neighbors.push(e.source());
-    }
-    neighbors
 }

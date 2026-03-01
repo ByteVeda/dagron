@@ -7,6 +7,24 @@ use crate::dag::PyDAG;
 use crate::errors;
 use crate::payload::PyNodePayload;
 
+/// Serialize a PyNodePayload's payload field using a Python callback.
+/// Returns `None` if the payload is absent or the callback fails.
+fn serialize_payload(
+    py: Python<'_>,
+    payload: &PyNodePayload,
+    cb: &Bound<'_, PyAny>,
+) -> Option<serde_json::Value> {
+    if let Some(ref payload_obj) = payload.payload {
+        let result = cb.call1((payload_obj.clone_ref(py),));
+        match result {
+            Ok(val) => py_to_json_value(&val).ok(),
+            Err(_) => None,
+        }
+    } else {
+        None
+    }
+}
+
 /// Convert a Python object to a serde_json::Value.
 fn py_to_json_value(obj: &Bound<'_, PyAny>) -> PyResult<serde_json::Value> {
     if obj.is_none() {
@@ -97,17 +115,7 @@ impl PyDAG {
             Some(cb) => {
                 // We need to call the Python callback for each node, so we can't release the GIL.
                 // Build a SerializableGraph manually.
-                let sg = self.inner.to_serializable(|p| {
-                    if let Some(ref payload_obj) = p.payload {
-                        let result = cb.call1((payload_obj.clone_ref(py),));
-                        match result {
-                            Ok(val) => py_to_json_value(&val).ok(),
-                            Err(_) => None,
-                        }
-                    } else {
-                        None
-                    }
-                });
+                let sg = self.inner.to_serializable(|p| serialize_payload(py, p, cb));
                 serde_json::to_string_pretty(&sg).map_err(|e| {
                     errors::into_pyerr(dagron_core::DagronError::Graph(format!(
                         "JSON serialization failed: {e}"
@@ -226,17 +234,7 @@ impl PyDAG {
                 // With serializer: can't use zero-copy (callback would be called twice)
                 let bytes = self
                     .inner
-                    .to_bincode(|p| {
-                        if let Some(ref payload_obj) = p.payload {
-                            let result = cb.call1((payload_obj.clone_ref(py),));
-                            match result {
-                                Ok(val) => py_to_json_value(&val).ok(),
-                                Err(_) => None,
-                            }
-                        } else {
-                            None
-                        }
-                    })
+                    .to_bincode(|p| serialize_payload(py, p, cb))
                     .map_err(errors::into_pyerr)?;
                 Ok(PyBytes::new(py, &bytes).unbind())
             }
@@ -317,17 +315,7 @@ impl PyDAG {
         match payload_serializer {
             Some(cb) => {
                 self.inner
-                    .to_bincode_file(file_path, |p| {
-                        if let Some(ref payload_obj) = p.payload {
-                            let result = cb.call1((payload_obj.clone_ref(py),));
-                            match result {
-                                Ok(val) => py_to_json_value(&val).ok(),
-                                Err(_) => None,
-                            }
-                        } else {
-                            None
-                        }
-                    })
+                    .to_bincode_file(file_path, |p| serialize_payload(py, p, cb))
                     .map_err(errors::into_pyerr)?;
             }
             None => {

@@ -1,6 +1,8 @@
-use crate::types::{InternalGraph, InternalNodeIndex};
+use ahash::AHashSet;
+
 use petgraph::visit::EdgeRef;
-use std::collections::HashSet;
+
+use crate::types::{InternalGraph, InternalNodeIndex};
 
 /// Check if adding an edge from `from` to `to` would create a cycle.
 /// Returns Some(cycle_path) if it would, None if safe.
@@ -15,7 +17,7 @@ pub fn would_create_cycle<P>(
     }
 
     // BFS from `to` following forward edges — if we reach `from`, there's a cycle.
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     let mut queue = std::collections::VecDeque::new();
     let mut parent: ahash::AHashMap<InternalNodeIndex, InternalNodeIndex> = ahash::AHashMap::new();
 
@@ -36,6 +38,10 @@ pub fn would_create_cycle<P>(
                     } else {
                         break;
                     }
+                }
+                // Ensure `to` is included even if the parent chain broke early
+                if path.last() != Some(&to) {
+                    path.push(to);
                 }
                 path.reverse();
                 return Some(path);

@@ -226,12 +226,11 @@ fn all_topo_backtrack<P>(
         }
     }
 
-    // Find all zero-in-degree nodes not yet in current
+    // Find all zero-in-degree nodes (removed nodes won't appear in in_degree)
     let mut candidates: Vec<InternalNodeIndex> = in_degree
         .iter()
         .filter(|(_, &deg)| deg == 0)
         .map(|(&node, _)| node)
-        .filter(|node| !current.contains(node))
         .collect();
     // Sort by name for deterministic ordering
     candidates.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));

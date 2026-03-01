@@ -116,72 +116,48 @@ impl<P> DAG<P> {
 
     /// Get all root nodes (nodes with no incoming edges).
     pub fn roots(&self) -> Vec<NodeId> {
-        {
-            let cache = self.cache.read().unwrap();
-            if cache.gen() == self.generation {
-                if let Some(cached) = cache.roots().cloned() {
-                    drop(cache);
-                    self.cache.write().unwrap().record_hit();
-                    return cached;
-                }
-            }
-        }
-        let result: Vec<NodeId> = self
-            .graph
-            .node_identifiers()
-            .filter(|&idx| {
+        self.with_cache(
+            |c| c.roots(),
+            |c, v| c.set_roots(v),
+            || {
                 self.graph
-                    .edges_directed(idx, Direction::Incoming)
-                    .next()
-                    .is_none()
-            })
-            .map(|idx| NodeId {
-                index: idx.index() as u32,
-                name: self.graph[idx].name.clone(),
-            })
-            .collect();
-        {
-            let mut cache = self.cache.write().unwrap();
-            cache.record_miss();
-            cache.set_gen(self.generation);
-            cache.set_roots(result.clone());
-        }
-        result
+                    .node_identifiers()
+                    .filter(|&idx| {
+                        self.graph
+                            .edges_directed(idx, Direction::Incoming)
+                            .next()
+                            .is_none()
+                    })
+                    .map(|idx| NodeId {
+                        index: idx.index() as u32,
+                        name: self.graph[idx].name.clone(),
+                    })
+                    .collect()
+            },
+        )
     }
 
     /// Get all leaf nodes (nodes with no outgoing edges).
     pub fn leaves(&self) -> Vec<NodeId> {
-        {
-            let cache = self.cache.read().unwrap();
-            if cache.gen() == self.generation {
-                if let Some(cached) = cache.leaves().cloned() {
-                    drop(cache);
-                    self.cache.write().unwrap().record_hit();
-                    return cached;
-                }
-            }
-        }
-        let result: Vec<NodeId> = self
-            .graph
-            .node_identifiers()
-            .filter(|&idx| {
+        self.with_cache(
+            |c| c.leaves(),
+            |c, v| c.set_leaves(v),
+            || {
                 self.graph
-                    .edges_directed(idx, Direction::Outgoing)
-                    .next()
-                    .is_none()
-            })
-            .map(|idx| NodeId {
-                index: idx.index() as u32,
-                name: self.graph[idx].name.clone(),
-            })
-            .collect();
-        {
-            let mut cache = self.cache.write().unwrap();
-            cache.record_miss();
-            cache.set_gen(self.generation);
-            cache.set_leaves(result.clone());
-        }
-        result
+                    .node_identifiers()
+                    .filter(|&idx| {
+                        self.graph
+                            .edges_directed(idx, Direction::Outgoing)
+                            .next()
+                            .is_none()
+                    })
+                    .map(|idx| NodeId {
+                        index: idx.index() as u32,
+                        name: self.graph[idx].name.clone(),
+                    })
+                    .collect()
+            },
+        )
     }
 
     /// Get all nodes in the graph.

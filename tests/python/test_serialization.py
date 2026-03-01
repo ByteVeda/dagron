@@ -209,8 +209,6 @@ class TestSaveLoad:
         dag2 = DAG.load(path)
 
         json_str = dag2.to_json()
-        import json
-
         data = json.loads(json_str)
         assert data["edges"][0]["weight"] == pytest.approx(3.5)
         assert data["edges"][0]["label"] == "test"

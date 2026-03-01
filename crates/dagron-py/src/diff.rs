@@ -34,65 +34,63 @@ impl PyGraphDiff {
         )
     }
 
-    fn to_dict(&self) -> std::collections::HashMap<&str, PyObject> {
-        Python::with_gil(|py| {
-            let mut map = std::collections::HashMap::new();
-            map.insert(
-                "added_nodes",
-                self.added_nodes
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map.insert(
-                "removed_nodes",
-                self.removed_nodes
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map.insert(
-                "changed_nodes",
-                self.changed_nodes
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map.insert(
-                "added_edges",
-                self.added_edges
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map.insert(
-                "removed_edges",
-                self.removed_edges
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map.insert(
-                "changed_edges",
-                self.changed_edges
-                    .clone()
-                    .into_pyobject(py)
-                    .unwrap()
-                    .into_any()
-                    .unbind(),
-            );
-            map
-        })
+    fn to_dict(&self, py: Python<'_>) -> std::collections::HashMap<&str, PyObject> {
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            "added_nodes",
+            self.added_nodes
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map.insert(
+            "removed_nodes",
+            self.removed_nodes
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map.insert(
+            "changed_nodes",
+            self.changed_nodes
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map.insert(
+            "added_edges",
+            self.added_edges
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map.insert(
+            "removed_edges",
+            self.removed_edges
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map.insert(
+            "changed_edges",
+            self.changed_edges
+                .clone()
+                .into_pyobject(py)
+                .unwrap()
+                .into_any()
+                .unbind(),
+        );
+        map
     }
 }
 

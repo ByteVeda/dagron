@@ -4,6 +4,8 @@ import asyncio
 import threading
 import time
 
+import pytest
+
 import dagron
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -187,7 +189,8 @@ class TestDAGExecutorCancel:
 
 
 class TestAsyncDAGExecutorTimeout:
-    def test_timed_out_node_gets_timed_out_status(self):
+    @pytest.mark.asyncio
+    async def test_timed_out_node_gets_timed_out_status(self):
         dag = dagron.DAG()
         dag.add_node("slow")
 
@@ -196,7 +199,7 @@ class TestAsyncDAGExecutorTimeout:
             return "done"
 
         executor = dagron.AsyncDAGExecutor(dag)
-        result = asyncio.run(executor.execute({"slow": slow_task}, timeout=0.1))
+        result = await executor.execute({"slow": slow_task}, timeout=0.1)
 
         assert result.node_results["slow"].status == dagron.NodeStatus.TIMED_OUT
         assert result.timed_out == 1
@@ -206,7 +209,8 @@ class TestAsyncDAGExecutorTimeout:
 
 
 class TestAsyncDAGExecutorCancel:
-    def test_cancel_stops_between_steps(self):
+    @pytest.mark.asyncio
+    async def test_cancel_stops_between_steps(self):
         dag = dagron.DAG()
         dag.add_node("A")
         dag.add_node("B")
@@ -222,11 +226,9 @@ class TestAsyncDAGExecutorCancel:
             return "b_done"
 
         executor = dagron.AsyncDAGExecutor(dag)
-        result = asyncio.run(
-            executor.execute(
-                {"A": task_a, "B": task_b},
-                cancel_event=cancel,
-            )
+        result = await executor.execute(
+            {"A": task_a, "B": task_b},
+            cancel_event=cancel,
         )
 
         assert result.node_results["A"].status == dagron.NodeStatus.COMPLETED

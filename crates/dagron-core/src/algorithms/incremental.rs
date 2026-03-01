@@ -1,6 +1,6 @@
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 
@@ -13,7 +13,7 @@ pub fn dirty_set<P>(
     graph: &InternalGraph<P>,
     changed: &[InternalNodeIndex],
 ) -> Vec<InternalNodeIndex> {
-    let mut visited: HashSet<InternalNodeIndex> = HashSet::new();
+    let mut visited: AHashSet<InternalNodeIndex> = AHashSet::new();
     let mut queue: VecDeque<InternalNodeIndex> = VecDeque::new();
 
     // Seed with all changed nodes
@@ -44,10 +44,8 @@ pub fn change_provenance<P>(
     graph: &InternalGraph<P>,
     changed: &[InternalNodeIndex],
 ) -> AHashMap<InternalNodeIndex, Vec<InternalNodeIndex>> {
-    let changed_set: HashSet<InternalNodeIndex> = changed.iter().copied().collect();
+    let changed_set: AHashSet<InternalNodeIndex> = changed.iter().copied().collect();
     let dirty = dirty_set(graph, changed);
-    let dirty_set_lookup: HashSet<InternalNodeIndex> = dirty.iter().copied().collect();
-
     let mut provenance: AHashMap<InternalNodeIndex, Vec<InternalNodeIndex>> =
         AHashMap::with_capacity(dirty.len());
 
@@ -61,7 +59,7 @@ pub fn change_provenance<P>(
         }
 
         // BFS ancestors
-        let mut visited: HashSet<InternalNodeIndex> = HashSet::new();
+        let mut visited: AHashSet<InternalNodeIndex> = AHashSet::new();
         visited.insert(node);
         let mut queue: VecDeque<InternalNodeIndex> = VecDeque::new();
 
@@ -73,7 +71,7 @@ pub fn change_provenance<P>(
         }
 
         while let Some(current) = queue.pop_front() {
-            if changed_set.contains(&current) && !dirty_set_lookup.is_empty() {
+            if changed_set.contains(&current) {
                 ancestors_changed.push(current);
             }
             for edge in graph.edges_directed(current, Direction::Incoming) {

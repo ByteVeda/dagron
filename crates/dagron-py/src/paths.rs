@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ahash::AHashMap;
 use pyo3::prelude::*;
 
 use crate::dag::PyDAG;
@@ -82,7 +83,7 @@ impl PyDAG {
         to_node: String,
         costs: Option<HashMap<String, f64>>,
     ) -> PyResult<Option<(Vec<PyNodeId>, f64)>> {
-        let costs_map = costs.unwrap_or_default();
+        let costs_map: AHashMap<String, f64> = costs.unwrap_or_default().into_iter().collect();
         let inner_ref = &self.inner;
         let result = py
             .allow_threads(|| inner_ref.longest_path(&from_node, &to_node, &costs_map))

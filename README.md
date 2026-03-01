@@ -105,19 +105,65 @@ asyncio.run(main())
 
 ## Features
 
-| | Feature | Description |
-|---|---|---|
-| 🛡️ | **Cycle detection** | Invalid graphs are rejected at build time |
-| 🔄 | **Topological sorting** | Deterministic, dependency-aware execution order |
-| ⚡ | **Parallel scheduling** | Thread-pool executor with configurable workers and cost-based scheduling |
-| 🌐 | **Async execution** | Native `asyncio` support via `AsyncDAGExecutor` |
-| ♻️ | **Incremental recomputation** | Re-run only what changed with `IncrementalExecutor` |
-| 🔔 | **Execution callbacks** | Hook into `on_start`, `on_complete`, and `on_error` events |
-| 📊 | **Profiling & tracing** | `profile_execution` and `ExecutionTrace` for performance analysis |
-| 💾 | **Serialization** | Import/export graphs to JSON and binary formats |
-| 🔍 | **Reachability index** | Fast ancestor/descendant queries |
-| ✂️ | **Graph transforms** | Subgraph extraction, diffing, and statistics |
-| 📓 | **Jupyter support** | Inline SVG rendering in notebooks |
+### Graph Construction
+
+Create DAGs with `DAG()` or the fluent `DAGBuilder`. Add nodes with payloads and metadata, weighted edges, and bulk-insert via `add_nodes`/`add_edges`. Build graphs from tabular data with `from_records`.
+
+### Cycle Detection & Validation
+
+Cycles are automatically rejected on edge insertion, so every `DAG` is acyclic by construction. Call `validate()` for an explicit structural health-check at any time.
+
+### Topological Sorting
+
+Multiple algorithms to suit different needs: Kahn's (BFS), DFS, level-based grouping, priority-weighted ordering, and full enumeration of all valid orderings. Lazy iterators are available for memory-efficient traversal of large graphs.
+
+### Scheduling & Execution Plans
+
+Generate dependency-aware execution plans with `execution_plan` and `execution_plan_constrained`. Identify the `critical_path` through weighted graphs and produce cost-based schedules for resource-constrained environments.
+
+### Execution Engines
+
+`DAGExecutor` runs tasks in a thread pool with configurable workers, while `AsyncDAGExecutor` provides native `asyncio` support for I/O-bound workflows. Both support fail-fast error handling, per-node timeouts, cancellation, and `on_start`/`on_complete`/`on_error` callbacks.
+
+### Incremental Computation
+
+`IncrementalExecutor` tracks a dirty set and re-executes only the nodes affected by changes. Early cutoff skips downstream work when a node's output hasn't changed, and change provenance records why each node was recomputed.
+
+### Graph Transforms
+
+Transform graphs with `reverse`, `collapse`, `filter`, `merge`, `transitive_reduction`, `transitive_closure`, and `dominator_tree`. Take immutable snapshots with `snapshot` for safe concurrent reads.
+
+### Subgraph & Path Algorithms
+
+Extract subgraphs by node set or by depth from a root. Compute `all_paths`, `shortest_path`, and `longest_path` between any two nodes.
+
+### Reachability
+
+`ReachabilityIndex` precomputes a compressed bitset index for O(1) ancestor/descendant queries. Use `is_ancestor` for quick relationship checks without repeated traversal.
+
+### Introspection
+
+Query predecessors, successors, ancestors, and descendants of any node. Inspect in/out degree, roots, and leaves. Lazy iterators keep memory usage low on large graphs. Full Python protocol support: `len`, `in`, `[]`, `iter`, and `bool`.
+
+### Node Matching
+
+Find nodes by name using regex or glob patterns — useful for selecting groups of related nodes in large graphs.
+
+### Statistics & Diffing
+
+`GraphStats` computes density, depth, width, connectivity metrics, and more. `GraphDiff` compares two DAGs and reports added, removed, and changed nodes and edges.
+
+### Serialization
+
+Export and import graphs as JSON, binary (bincode + memory-mapped files), Graphviz DOT, or Mermaid diagrams. Save to and load from files in any supported format.
+
+### Tracing & Profiling
+
+`ExecutionTrace` records per-node timing and exports to Chrome Tracing format for visualization. `profile_execution` identifies the critical path and detects bottleneck nodes.
+
+### Visualization
+
+ASCII `pretty_print` renders graphs in vertical or horizontal layout directly in the terminal. Jupyter notebooks get inline SVG rendering via Graphviz, DOT, or a built-in fallback renderer.
 
 ## Requirements
 

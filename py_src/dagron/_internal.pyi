@@ -3,6 +3,8 @@
 from collections.abc import Callable, Iterator
 from typing import Any, Literal
 
+from dagron.builder import DAGBuilder
+
 class NodeId:
     """An immutable identifier for a node in the DAG."""
 
@@ -170,7 +172,7 @@ class DAG:
     def remove_node(self, name: str) -> None: ...
     def remove_edge(self, from_node: str, to_node: str) -> None: ...
     @staticmethod
-    def builder() -> Any: ...
+    def builder() -> DAGBuilder: ...
 
     # --- Introspection ---
     def has_node(self, name: str) -> bool: ...
@@ -346,7 +348,25 @@ class DAG:
     def __bool__(self) -> bool: ...
 
     # --- Display (monkey-patched) ---
+    def pretty_print(
+        self,
+        *,
+        layout: Literal["vertical", "horizontal"] = "vertical",
+        max_nodes: int = 50,
+        show_payloads: bool = False,
+        node_formatter: Callable[[str, Any], str] | None = None,
+    ) -> str: ...
     def _repr_svg_(self) -> str: ...
+
+    # --- Integration (monkey-patched) ---
+    @staticmethod
+    def from_records(
+        records: Any,
+        *,
+        name_field: str = "name",
+        edge_fn: Callable[[Any], list[str]] | None = None,
+        payload_fn: Callable[[Any], Any] | None = None,
+    ) -> DAG: ...
 
 # Exceptions
 class DagronError(Exception): ...

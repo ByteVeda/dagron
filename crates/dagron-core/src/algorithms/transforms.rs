@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use ahash::AHashSet;
 
 use petgraph::visit::{EdgeRef, IntoEdgeReferences, IntoNodeIdentifiers};
 use petgraph::Direction;
@@ -11,8 +11,8 @@ use crate::types::{InternalGraph, InternalNodeIndex};
 /// (of length ≥ 2). Returns the set of (source, target) pairs to remove.
 pub fn transitive_reduction_redundant_edges<P>(
     graph: &InternalGraph<P>,
-) -> HashSet<(InternalNodeIndex, InternalNodeIndex)> {
-    let mut redundant = HashSet::new();
+) -> AHashSet<(InternalNodeIndex, InternalNodeIndex)> {
+    let mut redundant = AHashSet::new();
 
     for edge in graph.edge_references() {
         let u = edge.source();
@@ -58,7 +58,7 @@ fn has_alternate_path<P>(
 ) -> bool {
     // DFS from src's other successors (excluding dst) to see if we can reach dst
     let mut stack: Vec<InternalNodeIndex> = Vec::new();
-    let mut visited = HashSet::new();
+    let mut visited = AHashSet::new();
     visited.insert(src);
 
     for edge in graph.edges_directed(src, Direction::Outgoing) {
@@ -87,8 +87,8 @@ fn has_alternate_path<P>(
 fn reachable_set<P>(
     graph: &InternalGraph<P>,
     start: InternalNodeIndex,
-) -> HashSet<InternalNodeIndex> {
-    let mut visited = HashSet::new();
+) -> AHashSet<InternalNodeIndex> {
+    let mut visited = AHashSet::new();
     let mut stack = Vec::new();
 
     for edge in graph.edges_directed(start, Direction::Outgoing) {

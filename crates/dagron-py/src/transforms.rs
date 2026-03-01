@@ -184,6 +184,7 @@ impl PyDAG {
         let mut new_dag = dagron_core::DAG::new();
         clone_nodes(py, &self.inner, &mut new_dag)?;
         clone_edges(&self.inner, &mut new_dag)?;
+        new_dag.set_generation(self.inner.generation());
         Ok(PyDAG { inner: new_dag })
     }
 

@@ -5,26 +5,11 @@ import pytest
 import dagron
 from dagron import DAG, IncrementalExecutor
 
-
-def diamond_dag():
-    dag = DAG()
-    dag.add_node("a")
-    dag.add_node("b")
-    dag.add_node("c")
-    dag.add_node("d")
-    dag.add_edge("a", "b")
-    dag.add_edge("a", "c")
-    dag.add_edge("b", "d")
-    dag.add_edge("c", "d")
-    return dag
-
-
 # --- Reverse ---
 
 
-def test_reverse_diamond():
-    dag = diamond_dag()
-    rev = dag.reverse()
+def test_reverse_diamond(diamond_dag):
+    rev = diamond_dag.reverse()
     assert rev.node_count() == 4
     assert rev.edge_count() == 4
     assert rev.has_edge("b", "a")
@@ -68,9 +53,8 @@ def test_reverse_empty():
 # --- Collapse ---
 
 
-def test_collapse_pair_in_diamond():
-    dag = diamond_dag()
-    collapsed = dag.collapse(["b", "c"], "bc")
+def test_collapse_pair_in_diamond(diamond_dag):
+    collapsed = diamond_dag.collapse(["b", "c"], "bc")
     assert collapsed.node_count() == 3
     assert collapsed.has_node("a")
     assert collapsed.has_node("bc")
@@ -95,10 +79,9 @@ def test_collapse_preserves_payloads():
     assert collapsed.get_payload("c") == 30
 
 
-def test_collapse_error_on_missing_node():
-    dag = diamond_dag()
+def test_collapse_error_on_missing_node(diamond_dag):
     with pytest.raises(dagron.NodeNotFoundError):
-        dag.collapse(["b", "nonexistent"], "bc")
+        diamond_dag.collapse(["b", "nonexistent"], "bc")
 
 
 def test_collapse_all():
@@ -116,9 +99,8 @@ def test_collapse_all():
 # --- Dominator tree ---
 
 
-def test_dominator_tree_diamond():
-    dag = diamond_dag()
-    dom = dag.dominator_tree("a")
+def test_dominator_tree_diamond(diamond_dag):
+    dom = diamond_dag.dominator_tree("a")
     dom_map = dict(dom)
     assert dom_map["a"] == "a"
     assert dom_map["b"] == "a"
@@ -172,9 +154,8 @@ def test_to_bytes_from_bytes_empty():
     assert dag2.edge_count() == 0
 
 
-def test_to_bytes_from_bytes_diamond():
-    dag = diamond_dag()
-    data = dag.to_bytes()
+def test_to_bytes_from_bytes_diamond(diamond_dag):
+    data = diamond_dag.to_bytes()
     dag2 = DAG.from_bytes(data)
     assert dag2.node_count() == 4
     assert dag2.edge_count() == 4

@@ -282,10 +282,12 @@ pub fn resource_constrained_schedule<P>(
         }
     }
 
-    // Group scheduled nodes into steps by start_time
+    // Group scheduled nodes into steps by start_time.
+    // Note: `f64::to_bits` is used for exact grouping, which means `-0.0` and `+0.0`
+    // would be placed in separate groups (different bit patterns). This is acceptable
+    // here because all start times are non-negative values produced by accumulation.
     let mut time_groups: ahash::AHashMap<u64, Vec<InternalNodeIndex>> = ahash::AHashMap::new();
     for (&node, &(start, _)) in &schedule {
-        // Use bits as key for exact f64 grouping
         time_groups.entry(start.to_bits()).or_default().push(node);
     }
 

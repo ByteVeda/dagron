@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from dagron._internal import DAG
+    from dagron.tracing import ExecutionTrace
 
 
 class NodeStatus(Enum):
@@ -60,7 +61,58 @@ class ExecutionResult:
     timed_out: int = 0
     cancelled: int = 0
     total_duration_seconds: float = 0.0
-    trace: Any = None
+    trace: ExecutionTrace | None = None
+
+
+def _run_sync_task(
+    name: str,
+    task_fn: Callable[[], Any],
+    callbacks: ExecutionCallbacks,
+) -> NodeResult:
+    """Execute a synchronous task function with callbacks."""
+    if callbacks.on_start:
+        callbacks.on_start(name)
+
+    t0 = time.monotonic()
+    try:
+        value = task_fn()
+        duration = time.monotonic() - t0
+        if callbacks.on_complete:
+            callbacks.on_complete(name, value)
+        return NodeResult(
+            name=name,
+            status=NodeStatus.COMPLETED,
+            result=value,
+            duration_seconds=duration,
+        )
+    except Exception as exc:
+        duration = time.monotonic() - t0
+        if callbacks.on_failure:
+            callbacks.on_failure(name, exc)
+        return NodeResult(
+            name=name,
+            status=NodeStatus.FAILED,
+            error=exc,
+            duration_seconds=duration,
+        )
+
+
+def _record_skip(
+    name: str,
+    result: ExecutionResult,
+    callbacks: ExecutionCallbacks,
+    trace: ExecutionTrace | None,
+) -> None:
+    """Record a skipped node in the result, fire callback, and trace."""
+    from dagron.tracing import TraceEventType
+
+    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
+    result.node_results[name] = nr
+    result.skipped += 1
+    if callbacks.on_skip:
+        callbacks.on_skip(name)
+    if trace:
+        trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
 
 
 class DAGExecutor:
@@ -172,29 +224,17 @@ class DAGExecutor:
                         and failed_nodes
                         and get_ancestors(name) & failed_nodes
                     ):
-                        nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
-                        result.node_results[name] = nr
-                        result.skipped += 1
-                        if self._callbacks.on_skip:
-                            self._callbacks.on_skip(name)
-                        if trace:
-                            trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
+                        _record_skip(name, result, self._callbacks, trace)
                         continue
 
                     task_fn = tasks.get(name)
                     if task_fn is None:
-                        nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
-                        result.node_results[name] = nr
-                        result.skipped += 1
-                        if self._callbacks.on_skip:
-                            self._callbacks.on_skip(name)
-                        if trace:
-                            trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
+                        _record_skip(name, result, self._callbacks, trace)
                         continue
 
                     if trace:
                         trace.record(TraceEventType.NODE_STARTED, node_name=name)
-                    futures[pool.submit(self._run_task, name, task_fn)] = name
+                    futures[pool.submit(_run_sync_task, name, task_fn, self._callbacks)] = name
 
                 # Wait for all futures in this step
                 for future in futures:
@@ -248,32 +288,6 @@ class DAGExecutor:
         result.trace = trace
         return result
 
-    def _run_task(self, name: str, task_fn: Callable[[], Any]) -> NodeResult:
-        if self._callbacks.on_start:
-            self._callbacks.on_start(name)
-
-        t0 = time.monotonic()
-        try:
-            value = task_fn()
-            duration = time.monotonic() - t0
-            if self._callbacks.on_complete:
-                self._callbacks.on_complete(name, value)
-            return NodeResult(
-                name=name,
-                status=NodeStatus.COMPLETED,
-                result=value,
-                duration_seconds=duration,
-            )
-        except Exception as exc:
-            duration = time.monotonic() - t0
-            if self._callbacks.on_failure:
-                self._callbacks.on_failure(name, exc)
-            return NodeResult(
-                name=name,
-                status=NodeStatus.FAILED,
-                error=exc,
-                duration_seconds=duration,
-            )
 
 
 class AsyncDAGExecutor:
@@ -381,24 +395,12 @@ class AsyncDAGExecutor:
                     and failed_nodes
                     and get_ancestors(name) & failed_nodes
                 ):
-                    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
-                    result.node_results[name] = nr
-                    result.skipped += 1
-                    if self._callbacks.on_skip:
-                        self._callbacks.on_skip(name)
-                    if trace:
-                        trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
+                    _record_skip(name, result, self._callbacks, trace)
                     continue
 
                 task_fn = tasks.get(name)
                 if task_fn is None:
-                    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
-                    result.node_results[name] = nr
-                    result.skipped += 1
-                    if self._callbacks.on_skip:
-                        self._callbacks.on_skip(name)
-                    if trace:
-                        trace.record(TraceEventType.NODE_SKIPPED, node_name=name)
+                    _record_skip(name, result, self._callbacks, trace)
                     continue
 
                 if trace:
@@ -509,7 +511,7 @@ class IncrementalResult:
     reused: list[str] = field(default_factory=list)
     provenance: dict[str, list[str]] = field(default_factory=dict)
     total_duration_seconds: float = 0.0
-    trace: Any = None
+    trace: ExecutionTrace | None = None
 
 
 class IncrementalExecutor:
@@ -518,6 +520,9 @@ class IncrementalExecutor:
     Maintains a cache of previous results across calls. On subsequent
     executions with `changed_nodes`, only the dirty set is re-evaluated,
     and propagation stops when a node produces the same result as before.
+
+    **Thread safety:** This class is *not* thread-safe. Do not call
+    ``execute()`` concurrently from multiple threads on the same instance.
 
     Args:
         dag: A dagron.DAG instance.
@@ -573,7 +578,7 @@ class IncrementalExecutor:
                     continue
                 if trace:
                     trace.record(TraceEventType.NODE_STARTED, node_name=name)
-                nr = self._run_task(name, task_fn)
+                nr = _run_sync_task(name, task_fn, self._callbacks)
                 result.node_results[name] = nr
                 if nr.status == NodeStatus.COMPLETED:
                     self._cache[name] = nr.result
@@ -653,7 +658,7 @@ class IncrementalExecutor:
 
             if trace:
                 trace.record(TraceEventType.NODE_STARTED, node_name=name)
-            nr = self._run_task(name, task_fn)
+            nr = _run_sync_task(name, task_fn, self._callbacks)
             result.node_results[name] = nr
 
             if nr.status == NodeStatus.COMPLETED:
@@ -696,29 +701,3 @@ class IncrementalExecutor:
         result.trace = trace
         return result
 
-    def _run_task(self, name: str, task_fn: Callable[[], Any]) -> NodeResult:
-        if self._callbacks.on_start:
-            self._callbacks.on_start(name)
-
-        t0 = time.monotonic()
-        try:
-            value = task_fn()
-            duration = time.monotonic() - t0
-            if self._callbacks.on_complete:
-                self._callbacks.on_complete(name, value)
-            return NodeResult(
-                name=name,
-                status=NodeStatus.COMPLETED,
-                result=value,
-                duration_seconds=duration,
-            )
-        except Exception as exc:
-            duration = time.monotonic() - t0
-            if self._callbacks.on_failure:
-                self._callbacks.on_failure(name, exc)
-            return NodeResult(
-                name=name,
-                status=NodeStatus.FAILED,
-                error=exc,
-                duration_seconds=duration,
-            )

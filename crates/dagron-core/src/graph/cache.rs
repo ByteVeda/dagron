@@ -1,4 +1,3 @@
-use crate::errors::DagronError;
 use crate::node::NodeId;
 
 pub(crate) struct DagCache {
@@ -7,9 +6,9 @@ pub(crate) struct DagCache {
     misses: u64,
     roots: Option<Vec<NodeId>>,
     leaves: Option<Vec<NodeId>>,
-    topo_sort: Option<Result<Vec<NodeId>, DagronError>>,
-    topo_sort_dfs: Option<Result<Vec<NodeId>, DagronError>>,
-    topo_levels: Option<Result<Vec<Vec<NodeId>>, DagronError>>,
+    topo_sort: Option<Vec<NodeId>>,
+    topo_sort_dfs: Option<Vec<NodeId>>,
+    topo_levels: Option<Vec<Vec<NodeId>>>,
 }
 
 impl DagCache {
@@ -94,27 +93,27 @@ impl DagCache {
         self.leaves = Some(leaves);
     }
 
-    pub fn topo_sort(&self) -> Option<&Result<Vec<NodeId>, DagronError>> {
+    pub fn topo_sort(&self) -> Option<&Vec<NodeId>> {
         self.topo_sort.as_ref()
     }
 
-    pub fn set_topo_sort(&mut self, result: Result<Vec<NodeId>, DagronError>) {
+    pub fn set_topo_sort(&mut self, result: Vec<NodeId>) {
         self.topo_sort = Some(result);
     }
 
-    pub fn topo_sort_dfs(&self) -> Option<&Result<Vec<NodeId>, DagronError>> {
+    pub fn topo_sort_dfs(&self) -> Option<&Vec<NodeId>> {
         self.topo_sort_dfs.as_ref()
     }
 
-    pub fn set_topo_sort_dfs(&mut self, result: Result<Vec<NodeId>, DagronError>) {
+    pub fn set_topo_sort_dfs(&mut self, result: Vec<NodeId>) {
         self.topo_sort_dfs = Some(result);
     }
 
-    pub fn topo_levels(&self) -> Option<&Result<Vec<Vec<NodeId>>, DagronError>> {
+    pub fn topo_levels(&self) -> Option<&Vec<Vec<NodeId>>> {
         self.topo_levels.as_ref()
     }
 
-    pub fn set_topo_levels(&mut self, result: Result<Vec<Vec<NodeId>>, DagronError>) {
+    pub fn set_topo_levels(&mut self, result: Vec<Vec<NodeId>>) {
         self.topo_levels = Some(result);
     }
 }
