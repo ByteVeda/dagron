@@ -2,6 +2,7 @@ pub mod cycle;
 pub mod priority_toposort;
 pub mod scheduling;
 pub mod toposort;
+pub mod transforms;
 pub mod traversal;
 
 pub use cycle::{find_cycles, would_create_cycle};
@@ -12,4 +13,5 @@ pub use scheduling::{
     ScheduledNode,
 };
 pub use toposort::{topological_levels, topological_sort_dfs, topological_sort_kahn};
+pub use transforms::{transitive_closure_new_edges, transitive_reduction_redundant_edges};
 pub use traversal::{ancestors, descendants};

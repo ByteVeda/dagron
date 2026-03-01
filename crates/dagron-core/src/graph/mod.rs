@@ -4,6 +4,7 @@ pub mod introspection;
 pub mod scheduling;
 pub mod serialization;
 pub mod toposort;
+pub mod transforms;
 pub mod validation;
 
 use std::sync::Mutex;
