@@ -2,7 +2,7 @@
 
 import pytest
 
-from dagron import DAG, DAGBuilder, ReactiveDAG
+from dagron import DAGBuilder, ReactiveDAG
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestReactiveDAG:
             "output": output_fn,
         }
 
-        reactive = ReactiveDAG(dag, tasks)
+        reactive = ReactiveDAG(dag, tasks)  # type: ignore[arg-type]
         reactive.initialize()
         assert reactive.get("clamp") == 5
         assert call_count["output"] == 1
@@ -152,5 +152,5 @@ class TestReactiveDAG:
     def test_auto_initialize_on_set_input(self, calc_dag, calc_tasks):
         reactive = ReactiveDAG(calc_dag, calc_tasks)
         # set_input before initialize should auto-initialize
-        changed = reactive.set_input("a", 10)
+        reactive.set_input("a", 10)
         assert reactive.get("sum") == 12

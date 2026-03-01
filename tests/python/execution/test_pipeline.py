@@ -1,7 +1,5 @@
 """Tests for @dagron.task decorator and Pipeline."""
 
-import asyncio
-
 import pytest
 
 from dagron import DAG, Pipeline, task
@@ -33,18 +31,18 @@ class TestTaskDecorator:
         assert callable(fetch_users)
 
     def test_decorator_adds_spec(self):
-        spec = fetch_users._dagron_task
+        spec = fetch_users._dagron_task  # type: ignore[attr-defined]
         assert spec.name == "fetch_users"
         assert spec.dependencies == []
         assert spec.is_async is False
 
     def test_decorator_infers_dependencies(self):
-        spec = merge._dagron_task
+        spec = merge._dagron_task  # type: ignore[attr-defined]
         assert spec.name == "merge"
         assert set(spec.dependencies) == {"fetch_users", "fetch_orders"}
 
     def test_non_decorated_raises(self):
-        with pytest.raises(TypeError, match="not a @dagron.task"):
+        with pytest.raises(TypeError, match=r"not a @dagron\.task"):
             Pipeline([lambda: None])
 
 
@@ -79,7 +77,7 @@ class TestPipeline:
         def dup() -> int:
             return 1
 
-        @task
+        @task  # type: ignore[no-redef]
         def dup() -> int:  # noqa: F811
             return 2
 

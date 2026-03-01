@@ -1,7 +1,5 @@
 """Tests for Conditional Edges / Branching."""
 
-import pytest
-
 from dagron import ConditionalDAGBuilder, ConditionalExecutor, NodeStatus
 
 
@@ -23,7 +21,7 @@ class TestConditionalDAGBuilder:
         assert len(conditions) == 2
 
     def test_unconditional_edges(self):
-        dag, conditions = (
+        _dag, conditions = (
             ConditionalDAGBuilder()
             .add_node("a")
             .add_node("b")

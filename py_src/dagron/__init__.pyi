@@ -51,9 +51,55 @@ from dagron._internal import (
 from dagron._internal import (
     ScheduledNode as ScheduledNode,
 )
+from dagron.analysis import (
+    DAGSchema as DAGSchema,
+)
+from dagron.analysis import (
+    LintReport as LintReport,
+)
+from dagron.analysis import (
+    LintSeverity as LintSeverity,
+)
+from dagron.analysis import (
+    LintWarning as LintWarning,
+)
+from dagron.analysis import (
+    NodeExplanation as NodeExplanation,
+)
+from dagron.analysis import (
+    WhatIfResult as WhatIfResult,
+)
 from dagron.builder import DAGBuilder as DAGBuilder
+from dagron.compose import compose as compose
+from dagron.dataframe import (
+    ColumnSchema as ColumnSchema,
+)
+from dagron.dataframe import (
+    DataFramePipeline as DataFramePipeline,
+)
+from dagron.dataframe import (
+    DataFrameSchema as DataFrameSchema,
+)
+from dagron.dataframe import (
+    SchemaViolation as SchemaViolation,
+)
+from dagron.dataframe import (
+    validate_schema as validate_schema,
+)
 from dagron.execution import (
     AsyncDAGExecutor as AsyncDAGExecutor,
+)
+from dagron.execution import (
+    CheckpointExecutor as CheckpointExecutor,
+)
+from dagron.execution import (
+    CheckpointInfo as CheckpointInfo,
+)
+from dagron.execution import (
+    ConditionalDAGBuilder as ConditionalDAGBuilder,
+)
+from dagron.execution import (
+    ConditionalExecutor as ConditionalExecutor,
 )
 from dagron.execution import (
     DAGExecutor as DAGExecutor,
@@ -83,7 +129,13 @@ from dagron.execution import (
     NodeStatus as NodeStatus,
 )
 from dagron.execution import (
+    Pipeline as Pipeline,
+)
+from dagron.execution import (
     ProfileReport as ProfileReport,
+)
+from dagron.execution import (
+    ReactiveDAG as ReactiveDAG,
 )
 from dagron.execution import (
     TraceEvent as TraceEvent,
@@ -93,6 +145,18 @@ from dagron.execution import (
 )
 from dagron.execution import (
     profile_execution as profile_execution,
+)
+from dagron.execution import (
+    task as task,
+)
+from dagron.versioning import (
+    Mutation as Mutation,
+)
+from dagron.versioning import (
+    MutationType as MutationType,
+)
+from dagron.versioning import (
+    VersionedDAG as VersionedDAG,
 )
 
 __version__: str

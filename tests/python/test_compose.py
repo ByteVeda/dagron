@@ -2,7 +2,7 @@
 
 import pytest
 
-from dagron import DAG, DAGBuilder, compose
+from dagron import DAGBuilder, compose
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestCompose:
             connections=[("etl/load", "ml/train")],
         )
         # Full dagron analysis should work
-        cp_nodes, cp_cost = combined.critical_path()
+        cp_nodes, _cp_cost = combined.critical_path()
         assert len(cp_nodes) == 6
 
     def test_single_dag(self, etl_dag):

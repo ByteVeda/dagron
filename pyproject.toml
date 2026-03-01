@@ -65,3 +65,24 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "graphviz.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pandas",
+    "pandas.*",
+    "numpy",
+    "numpy.*",
+    "polars",
+    "polars.*",
+    "networkx",
+    "networkx.*",
+]
+ignore_missing_imports = true

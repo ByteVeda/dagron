@@ -5,6 +5,11 @@ import time
 from dagron import DAG, DAGExecutor, NodeProfile, ProfileReport, profile_execution
 
 
+def _delayed(value: str, seconds: float = 0.01) -> str:
+    time.sleep(seconds)
+    return value
+
+
 def test_profile_linear_dag():
     dag = DAG()
     dag.add_nodes(["a", "b", "c"])
@@ -14,9 +19,9 @@ def test_profile_linear_dag():
     executor = DAGExecutor(dag)
     result = executor.execute(
         {
-            "a": lambda: time.sleep(0.01) or "a",
-            "b": lambda: time.sleep(0.01) or "b",
-            "c": lambda: time.sleep(0.01) or "c",
+            "a": lambda: _delayed("a"),
+            "b": lambda: _delayed("b"),
+            "c": lambda: _delayed("c"),
         }
     )
 
@@ -62,10 +67,10 @@ def test_profile_slack():
     executor = DAGExecutor(dag)
     result = executor.execute(
         {
-            "a": lambda: time.sleep(0.01) or "a",
-            "b": lambda: time.sleep(0.05) or "b",
-            "c": lambda: time.sleep(0.01) or "c",
-            "d": lambda: time.sleep(0.01) or "d",
+            "a": lambda: _delayed("a"),
+            "b": lambda: _delayed("b", 0.05),
+            "c": lambda: _delayed("c"),
+            "d": lambda: _delayed("d"),
         }
     )
 
@@ -125,11 +130,11 @@ def test_profile_bottlenecks():
     executor = DAGExecutor(dag)
     result = executor.execute(
         {
-            "a": lambda: time.sleep(0.01) or "a",
-            "b": lambda: time.sleep(0.05) or "b",
-            "c": lambda: time.sleep(0.01) or "c",
-            "d": lambda: time.sleep(0.01) or "d",
-            "e": lambda: time.sleep(0.01) or "e",
+            "a": lambda: _delayed("a"),
+            "b": lambda: _delayed("b", 0.05),
+            "c": lambda: _delayed("c"),
+            "d": lambda: _delayed("d"),
+            "e": lambda: _delayed("e"),
         }
     )
 

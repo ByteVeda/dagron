@@ -2,7 +2,7 @@
 
 import pytest
 
-from dagron import DAG, DAGBuilder, NodeExplanation, WhatIfResult
+from dagron import DAGBuilder, NodeExplanation, WhatIfResult
 
 
 @pytest.fixture

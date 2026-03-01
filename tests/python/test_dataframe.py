@@ -5,7 +5,6 @@ import pytest
 from dagron.dataframe import (
     ColumnSchema,
     DataFrameSchema,
-    SchemaViolation,
     validate_schema,
 )
 
@@ -111,8 +110,8 @@ class TestSchemaValidation:
         not _has_pandas(), reason="pandas not installed"
     )
     def test_pandas_nullable_check(self):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
         df = pd.DataFrame({"id": [1, np.nan]})
         schema = DataFrameSchema(

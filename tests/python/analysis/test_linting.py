@@ -1,8 +1,6 @@
 """Tests for DAG linting and schema validation."""
 
-import pytest
-
-from dagron import DAG, DAGBuilder, DAGSchema, LintReport, LintSeverity
+from dagron import DAG, DAGBuilder, DAGSchema, LintReport
 
 
 class TestLint:
