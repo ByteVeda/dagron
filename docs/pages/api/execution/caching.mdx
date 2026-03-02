@@ -1,0 +1,371 @@
+---
+sidebar_position: 7
+title: "Caching"
+description: "API reference for CachedDAGExecutor, ContentAddressableCache, CachePolicy, and cache backends."
+---
+
+import ApiSignature from '@site/src/components/ApiSignature';
+import ParamTable from '@site/src/components/ParamTable';
+
+# Caching
+
+The caching module provides content-addressable, Merkle-tree-based caching for
+DAG execution. A node's cache key is derived from its task code, its
+predecessors' output hashes, and its name — so if nothing upstream has changed,
+the cached result is returned without re-execution.
+
+See the [Caching](/guide/execution-strategies/caching) guide for configuration patterns,
+backend selection, and cache invalidation strategies.
+
+---
+
+## CachedDAGExecutor
+
+<ApiSignature name="CachedDAGExecutor" signature={`class CachedDAGExecutor(
+    dag: DAG,
+    cache: ContentAddressableCache,
+    callbacks: ExecutionCallbacks | None = None,
+    fail_fast: bool = True,
+    enable_tracing: bool = False,
+)`} />
+
+An executor that wraps the standard [DAGExecutor](/api/execution/execution) with a
+content-addressable cache layer. Before executing a node, the executor checks
+the cache; if a valid entry exists, the cached result is returned and the node
+is marked `CACHE_HIT`.
+
+<ParamTable params={[
+  {name: "dag", type: "DAG", description: "The DAG whose topology drives execution order."},
+  {name: "cache", type: "ContentAddressableCache", description: "The cache instance to use for storing and retrieving results."},
+  {name: "callbacks", type: "ExecutionCallbacks | None", default: "None", description: "Optional lifecycle callbacks."},
+  {name: "fail_fast", type: "bool", default: "True", description: "If True, skip downstream nodes when any node fails."},
+  {name: "enable_tracing", type: "bool", default: "False", description: "If True, record a Chrome-compatible execution trace."},
+]} />
+
+### execute
+
+<ApiSignature name="CachedDAGExecutor.execute" signature={`def execute(
+    tasks: dict[str, Callable],
+) -> CachedExecutionResult`} />
+
+Execute tasks with caching. Returns a [CachedExecutionResult](#cachedexecutionresult)
+with cache statistics.
+
+<ParamTable params={[
+  {name: "tasks", type: "dict[str, Callable]", description: "Map of node names to callable tasks."},
+]} />
+
+```python
+import dagron
+
+dag = (
+    dagron.DAG.builder()
+    .add_node("fetch").add_node("process").add_node("save")
+    .add_edge("fetch", "process").add_edge("process", "save")
+    .build()
+)
+
+cache = dagron.ContentAddressableCache(
+    backend=dagron.FileSystemCacheBackend("./cache_dir")
+)
+
+executor = dagron.CachedDAGExecutor(dag, cache=cache)
+
+# First run — all nodes executed
+result = executor.execute({
+    "fetch": lambda: [1, 2, 3],
+    "process": lambda: [2, 4, 6],
+    "save": lambda: "done",
+})
+print(result.cache_hits, result.cache_misses)  # 0, 3
+
+# Second run — all nodes cached
+result = executor.execute({
+    "fetch": lambda: [1, 2, 3],
+    "process": lambda: [2, 4, 6],
+    "save": lambda: "done",
+})
+print(result.cache_hits, result.cache_misses)  # 3, 0
+```
+
+---
+
+## CachedExecutionResult
+
+<ApiSignature name="CachedExecutionResult" signature={`class CachedExecutionResult(
+    execution_result: ExecutionResult,
+    cache_hits: int,
+    cache_misses: int,
+    nodes_executed: int,
+    nodes_cached: int,
+)`} />
+
+Extends the standard [ExecutionResult](/api/execution/execution) with cache
+statistics.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `execution_result` | `ExecutionResult` | The underlying execution result with per-node details. |
+| `cache_hits` | `int` | Number of nodes whose results were loaded from cache. |
+| `cache_misses` | `int` | Number of nodes that were executed (cache miss). |
+| `nodes_executed` | `int` | Number of nodes that were actually executed. |
+| `nodes_cached` | `int` | Number of nodes that returned cached results. |
+
+```python
+print(f"Hit rate: {result.cache_hits}/{result.cache_hits + result.cache_misses}")
+print(f"Nodes executed: {result.nodes_executed}")
+print(f"Nodes cached: {result.nodes_cached}")
+```
+
+---
+
+## ContentAddressableCache
+
+<ApiSignature name="ContentAddressableCache" signature={`class ContentAddressableCache(
+    backend: CacheBackend,
+)`} />
+
+A Merkle-tree cache that computes content-addressable keys from task code and
+predecessor output hashes. This ensures that a cache entry is only valid when
+the exact same computation with the exact same inputs was previously executed.
+
+<ParamTable params={[
+  {name: "backend", type: "CacheBackend", description: "The storage backend (e.g., FileSystemCacheBackend)."},
+]} />
+
+### Methods
+
+<ApiSignature name="ContentAddressableCache.compute_key" signature={`def compute_key(
+    name: str,
+    task: Callable,
+    predecessor_hashes: dict[str, str],
+) -> str`} />
+
+Compute the content-addressable cache key for a node.
+
+<ParamTable params={[
+  {name: "name", type: "str", description: "The node name."},
+  {name: "task", type: "Callable", description: "The task callable."},
+  {name: "predecessor_hashes", type: "dict[str, str]", description: "Map of predecessor names to their output hashes."},
+]} />
+
+<ApiSignature name="ContentAddressableCache.get" signature={`def get(key: str) -> Any | None`} />
+
+Retrieve a cached value by key. Returns `None` on cache miss.
+
+<ApiSignature name="ContentAddressableCache.put" signature={`def put(key: str, value: Any) -> None`} />
+
+Store a value in the cache.
+
+<ApiSignature name="ContentAddressableCache.has" signature={`def has(key: str) -> bool`} />
+
+Check if a key exists in the cache.
+
+<ApiSignature name="ContentAddressableCache.clear" signature={`def clear() -> None`} />
+
+Clear all entries from the cache.
+
+<ApiSignature name="ContentAddressableCache.stats" signature={`def stats() -> CacheStats`} />
+
+Return current cache statistics.
+
+```python
+cache = dagron.ContentAddressableCache(
+    backend=dagron.FileSystemCacheBackend("./my_cache")
+)
+
+key = cache.compute_key("process", process_fn, {"fetch": "abc123"})
+cache.put(key, [2, 4, 6])
+print(cache.has(key))    # True
+print(cache.get(key))    # [2, 4, 6]
+print(cache.stats())     # CacheStats(...)
+```
+
+---
+
+## CachePolicy
+
+<ApiSignature name="CachePolicy" signature={`class CachePolicy(
+    max_entries: int | None = None,
+    max_size_bytes: int | None = None,
+    ttl_seconds: float | None = None,
+)`} />
+
+A policy that controls cache eviction. Applied to a cache backend to limit
+storage consumption.
+
+<ParamTable params={[
+  {name: "max_entries", type: "int | None", default: "None", description: "Maximum number of cache entries. Oldest entries are evicted first."},
+  {name: "max_size_bytes", type: "int | None", default: "None", description: "Maximum total cache size in bytes. Oldest entries are evicted first."},
+  {name: "ttl_seconds", type: "float | None", default: "None", description: "Time-to-live for each entry in seconds. Expired entries are evicted on access."},
+]} />
+
+```python
+policy = dagron.CachePolicy(
+    max_entries=1000,
+    max_size_bytes=500 * 1024 * 1024,  # 500 MB
+    ttl_seconds=3600,                   # 1 hour
+)
+backend = dagron.FileSystemCacheBackend("./cache_dir", policy=policy)
+```
+
+---
+
+## CacheStats
+
+<ApiSignature name="CacheStats" signature={`class CacheStats(
+    hits: int,
+    misses: int,
+    evictions: int,
+    total_entries: int,
+    total_size_bytes: int,
+)`} />
+
+Cache performance statistics.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `hits` | `int` | Total cache hits since creation or last clear. |
+| `misses` | `int` | Total cache misses. |
+| `evictions` | `int` | Total entries evicted by policy. |
+| `total_entries` | `int` | Current number of entries in the cache. |
+| `total_size_bytes` | `int` | Current total size of cached data in bytes. |
+
+<ApiSignature name="CacheStats.hit_rate" signature={`@property
+def hit_rate() -> float`} />
+
+The cache hit rate as a float between 0.0 and 1.0. Returns 0.0 if no lookups
+have been performed.
+
+```python
+stats = cache.stats()
+print(f"Hit rate: {stats.hit_rate:.1%}")
+print(f"Entries: {stats.total_entries}")
+print(f"Size: {stats.total_size_bytes / 1024 / 1024:.1f} MB")
+print(f"Evictions: {stats.evictions}")
+```
+
+---
+
+## FileSystemCacheBackend
+
+<ApiSignature name="FileSystemCacheBackend" signature={`class FileSystemCacheBackend(
+    cache_dir: str,
+    policy: CachePolicy | None = None,
+)`} />
+
+A cache backend that stores entries as files on the local filesystem. Each cache
+key maps to a file in `cache_dir`. Supports optional eviction via a
+[CachePolicy](#cachepolicy).
+
+<ParamTable params={[
+  {name: "cache_dir", type: "str", description: "Directory for storing cache files. Created if it does not exist."},
+  {name: "policy", type: "CachePolicy | None", default: "None", description: "Optional eviction policy."},
+]} />
+
+### Methods
+
+<ApiSignature name="FileSystemCacheBackend.get" signature={`def get(key: str) -> Any | None`} />
+
+Retrieve a cached value by key from disk.
+
+<ApiSignature name="FileSystemCacheBackend.put" signature={`def put(key: str, value: Any) -> None`} />
+
+Store a value on disk.
+
+<ApiSignature name="FileSystemCacheBackend.has" signature={`def has(key: str) -> bool`} />
+
+Check if a key exists on disk.
+
+<ApiSignature name="FileSystemCacheBackend.delete" signature={`def delete(key: str) -> None`} />
+
+Remove a single entry from disk.
+
+<ApiSignature name="FileSystemCacheBackend.clear" signature={`def clear() -> None`} />
+
+Remove all cache files.
+
+<ApiSignature name="FileSystemCacheBackend.stats" signature={`def stats() -> CacheStats`} />
+
+Return current backend statistics.
+
+```python
+backend = dagron.FileSystemCacheBackend(
+    "./my_pipeline_cache",
+    policy=dagron.CachePolicy(max_entries=500, ttl_seconds=7200),
+)
+
+backend.put("key123", {"data": [1, 2, 3]})
+print(backend.has("key123"))   # True
+print(backend.get("key123"))   # {"data": [1, 2, 3]}
+```
+
+---
+
+## CacheKeyBuilder
+
+<ApiSignature name="CacheKeyBuilder" signature={`class CacheKeyBuilder`} />
+
+A utility for manually constructing cache keys. Used internally by
+`ContentAddressableCache` but available for advanced use cases.
+
+<ApiSignature name="CacheKeyBuilder.hash_task" signature={`def hash_task(fn: Callable) -> str`} />
+
+Compute a hash of a callable's bytecode and closure.
+
+<ApiSignature name="CacheKeyBuilder.hash_value" signature={`def hash_value(value: Any) -> str`} />
+
+Compute a hash of an arbitrary Python value.
+
+<ApiSignature name="CacheKeyBuilder.build_key" signature={`def build_key(
+    name: str,
+    task_hash: str,
+    pred_hashes: dict[str, str],
+) -> str`} />
+
+Combine a node name, task hash, and predecessor hashes into a final cache key.
+
+<ParamTable params={[
+  {name: "name", type: "str", description: "The node name."},
+  {name: "task_hash", type: "str", description: "Hash of the task callable."},
+  {name: "pred_hashes", type: "dict[str, str]", description: "Map of predecessor names to their output hashes."},
+]} />
+
+```python
+builder = dagron.CacheKeyBuilder()
+task_hash = builder.hash_task(my_function)
+value_hash = builder.hash_value([1, 2, 3])
+key = builder.build_key("process", task_hash, {"fetch": value_hash})
+```
+
+---
+
+## CacheKeyProtocol
+
+<ApiSignature name="CacheKeyProtocol" signature={`class CacheKeyProtocol(Protocol):
+    def __dagron_cache_key__(self) -> str: ...`} />
+
+A protocol for objects that provide their own cache key. If a task's return
+value implements this protocol, the cache uses its `__dagron_cache_key__()`
+method instead of the default hashing strategy.
+
+```python
+class MyModel:
+    def __init__(self, version, data):
+        self.version = version
+        self.data = data
+
+    def __dagron_cache_key__(self) -> str:
+        return f"model-v{self.version}-{hash(tuple(self.data))}"
+
+# When MyModel is returned from a task, the cache uses __dagron_cache_key__
+```
+
+---
+
+## Related
+
+- [DAGExecutor](/api/execution/execution) — the base executor that caching wraps.
+- [Incremental Execution](/api/execution/incremental) — dirty-set-based re-execution.
+- [Checkpointing](/api/execution/checkpoint) — save progress to disk for resume.
+- [Caching guide](/guide/execution-strategies/caching) — configuration and invalidation patterns.

@@ -1,0 +1,350 @@
+---
+sidebar_position: 4
+slug: /api/execution/execution
+title: "Execution"
+description: "API reference for DAGExecutor, AsyncDAGExecutor, ExecutionResult, NodeResult, NodeStatus, and ExecutionCallbacks."
+---
+
+import ApiSignature from '@site/src/components/ApiSignature';
+import ParamTable from '@site/src/components/ParamTable';
+
+# Execution
+
+The execution module provides thread-pool and async executors that walk the DAG
+in topological order, dispatching tasks with maximum parallelism while respecting
+dependency constraints.
+
+See the [Executing Tasks](/guide/core-concepts/executing-tasks) guide for patterns
+including timeouts, cancellation, callbacks, and fail-fast behavior.
+
+---
+
+## DAGExecutor
+
+<ApiSignature name="DAGExecutor" signature={`class DAGExecutor(
+    dag: DAG,
+    max_workers: int | None = None,
+    costs: dict[str, float] | None = None,
+    callbacks: ExecutionCallbacks | None = None,
+    fail_fast: bool = True,
+    enable_tracing: bool = False,
+    hooks: dict | None = None,
+)`} />
+
+A synchronous executor that runs DAG tasks on a thread pool. Tasks are
+dispatched in topological order with maximum parallelism bounded by
+`max_workers`.
+
+<ParamTable params={[
+  {name: "dag", type: "DAG", description: "The DAG whose topology drives execution order."},
+  {name: "max_workers", type: "int | None", default: "None", description: "Maximum number of concurrent worker threads. None uses os.cpu_count()."},
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node cost estimates for scheduling priority."},
+  {name: "callbacks", type: "ExecutionCallbacks | None", default: "None", description: "Optional lifecycle callbacks (on_start, on_complete, etc.)."},
+  {name: "fail_fast", type: "bool", default: "True", description: "If True, skip downstream nodes when any node fails."},
+  {name: "enable_tracing", type: "bool", default: "False", description: "If True, record a Chrome-compatible execution trace."},
+  {name: "hooks", type: "dict | None", default: "None", description: "Optional hook registry for plugin integration."},
+]} />
+
+### execute
+
+<ApiSignature name="DAGExecutor.execute" signature={`def execute(
+    tasks: dict[str, Callable],
+    timeout: float | None = None,
+    cancel_event: threading.Event | None = None,
+) -> ExecutionResult`} />
+
+Execute all tasks according to the DAG topology. Each key in `tasks` must match
+a node name in the DAG. Returns an [ExecutionResult](#executionresult) when all
+tasks have completed, failed, or been skipped.
+
+<ParamTable params={[
+  {name: "tasks", type: "dict[str, Callable]", description: "Map of node names to callable tasks."},
+  {name: "timeout", type: "float | None", default: "None", description: "Global timeout in seconds. Nodes still running after the timeout are marked TIMED_OUT."},
+  {name: "cancel_event", type: "threading.Event | None", default: "None", description: "An external cancellation signal. Set the event to cancel remaining nodes."},
+]} />
+
+```python
+import dagron
+
+dag = (
+    dagron.DAG.builder()
+    .add_node("a").add_node("b").add_node("c")
+    .add_edge("a", "b").add_edge("b", "c")
+    .build()
+)
+
+result = dagron.DAGExecutor(dag, max_workers=4).execute({
+    "a": lambda: "step-a",
+    "b": lambda: "step-b",
+    "c": lambda: "step-c",
+})
+
+print(result.succeeded)  # 3
+```
+
+---
+
+## AsyncDAGExecutor
+
+<ApiSignature name="AsyncDAGExecutor" signature={`class AsyncDAGExecutor(
+    dag: DAG,
+    max_workers: int | None = None,
+    costs: dict[str, float] | None = None,
+    callbacks: ExecutionCallbacks | None = None,
+    fail_fast: bool = True,
+    enable_tracing: bool = False,
+    hooks: dict | None = None,
+)`} />
+
+An async executor that runs DAG tasks on an asyncio event loop. Same interface
+as `DAGExecutor` but all tasks must be async callables (coroutines).
+
+<ParamTable params={[
+  {name: "dag", type: "DAG", description: "The DAG whose topology drives execution order."},
+  {name: "max_workers", type: "int | None", default: "None", description: "Maximum number of concurrent coroutines. None means unlimited."},
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node cost estimates for scheduling priority."},
+  {name: "callbacks", type: "ExecutionCallbacks | None", default: "None", description: "Optional lifecycle callbacks."},
+  {name: "fail_fast", type: "bool", default: "True", description: "If True, skip downstream nodes when any node fails."},
+  {name: "enable_tracing", type: "bool", default: "False", description: "If True, record a Chrome-compatible execution trace."},
+  {name: "hooks", type: "dict | None", default: "None", description: "Optional hook registry for plugin integration."},
+]} />
+
+### execute (async)
+
+<ApiSignature name="AsyncDAGExecutor.execute" signature={`async def execute(
+    tasks: dict[str, Callable[..., Awaitable]],
+    timeout: float | None = None,
+    cancel_event: asyncio.Event | None = None,
+) -> ExecutionResult`} />
+
+Execute all async tasks according to the DAG topology.
+
+<ParamTable params={[
+  {name: "tasks", type: "dict[str, Callable[..., Awaitable]]", description: "Map of node names to async callable tasks."},
+  {name: "timeout", type: "float | None", default: "None", description: "Global timeout in seconds."},
+  {name: "cancel_event", type: "asyncio.Event | None", default: "None", description: "An external async cancellation signal."},
+]} />
+
+```python
+import asyncio
+import dagron
+
+dag = (
+    dagron.DAG.builder()
+    .add_node("fetch").add_node("process")
+    .add_edge("fetch", "process")
+    .build()
+)
+
+async def main():
+    result = await dagron.AsyncDAGExecutor(dag).execute({
+        "fetch": lambda: asyncio.sleep(0.1),
+        "process": lambda: asyncio.sleep(0.05),
+    })
+    print(result.succeeded)  # 2
+
+asyncio.run(main())
+```
+
+---
+
+## ExecutionResult
+
+<ApiSignature name="ExecutionResult" signature={`class ExecutionResult(
+    node_results: dict[str, NodeResult],
+    succeeded: int,
+    failed: int,
+    skipped: int,
+    timed_out: int,
+    cancelled: int,
+    total_duration_seconds: float,
+    trace: Trace | None,
+)`} />
+
+The aggregate result of executing all tasks in a DAG. Returned by every
+executor's `.execute()` method.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `node_results` | `dict[str, NodeResult]` | Per-node results keyed by node name. |
+| `succeeded` | `int` | Number of nodes that completed successfully. |
+| `failed` | `int` | Number of nodes that raised exceptions. |
+| `skipped` | `int` | Number of nodes skipped due to upstream failures. |
+| `timed_out` | `int` | Number of nodes that exceeded the timeout. |
+| `cancelled` | `int` | Number of nodes cancelled by the cancel event. |
+| `total_duration_seconds` | `float` | Wall-clock duration of the entire execution. |
+| `trace` | `Trace | None` | Chrome-compatible trace data if `enable_tracing=True`. |
+
+```python
+result = executor.execute(tasks)
+
+print(f"Succeeded: {result.succeeded}/{result.succeeded + result.failed}")
+print(f"Duration: {result.total_duration_seconds:.3f}s")
+
+for name, nr in result.node_results.items():
+    print(f"  {name}: {nr.status} ({nr.duration_seconds:.3f}s)")
+```
+
+---
+
+## NodeResult
+
+<ApiSignature name="NodeResult" signature={`class NodeResult(
+    name: str,
+    status: NodeStatus,
+    result: Any,
+    error: Exception | None,
+    duration_seconds: float,
+)`} />
+
+The result of executing a single node.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `str` | The node name. |
+| `status` | `NodeStatus` | The terminal status of this node. |
+| `result` | `Any` | The return value of the task callable, or `None` if it did not complete. |
+| `error` | `Exception | None` | The exception raised by the task, or `None` on success. |
+| `duration_seconds` | `float` | Wall-clock duration of this node's execution. |
+
+```python
+nr = result.node_results["transform"]
+if nr.status == dagron.NodeStatus.COMPLETED:
+    print(f"Transform returned: {nr.result}")
+elif nr.status == dagron.NodeStatus.FAILED:
+    print(f"Transform failed: {nr.error}")
+```
+
+---
+
+## NodeStatus
+
+<ApiSignature name="NodeStatus" signature={`class NodeStatus(enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    TIMED_OUT = "timed_out"
+    CANCELLED = "cancelled"
+    CACHE_HIT = "cache_hit"`} />
+
+Enumeration of possible node execution states.
+
+| Value | Description |
+|-------|-------------|
+| `PENDING` | Node has not yet started. |
+| `RUNNING` | Node is currently executing. |
+| `COMPLETED` | Node finished successfully. |
+| `FAILED` | Node raised an exception. |
+| `SKIPPED` | Node was skipped because an upstream dependency failed (fail-fast mode). |
+| `TIMED_OUT` | Node exceeded the execution timeout. |
+| `CANCELLED` | Node was cancelled by the cancel event. |
+| `CACHE_HIT` | Node result was loaded from cache instead of executing. |
+
+---
+
+## ExecutionCallbacks
+
+<ApiSignature name="ExecutionCallbacks" signature={`class ExecutionCallbacks(
+    on_start: Callable[[str], None] | None = None,
+    on_complete: Callable[[str, Any], None] | None = None,
+    on_failure: Callable[[str, Exception], None] | None = None,
+    on_skip: Callable[[str], None] | None = None,
+    on_gate_waiting: Callable[[str], None] | None = None,
+    on_gate_resolved: Callable[[str, str], None] | None = None,
+    on_dynamic_expand: Callable[[str, list[str]], None] | None = None,
+    on_resource_acquired: Callable[[str, dict], None] | None = None,
+    on_resource_released: Callable[[str, dict], None] | None = None,
+)`} />
+
+Lifecycle callbacks invoked during execution. All callbacks are optional. Each
+receives the node name as the first argument.
+
+<ParamTable params={[
+  {name: "on_start", type: "Callable[[str], None] | None", default: "None", description: "Called when a node begins execution."},
+  {name: "on_complete", type: "Callable[[str, Any], None] | None", default: "None", description: "Called when a node completes. Receives the node name and return value."},
+  {name: "on_failure", type: "Callable[[str, Exception], None] | None", default: "None", description: "Called when a node raises an exception."},
+  {name: "on_skip", type: "Callable[[str], None] | None", default: "None", description: "Called when a node is skipped."},
+  {name: "on_gate_waiting", type: "Callable[[str], None] | None", default: "None", description: "Called when execution pauses for an approval gate."},
+  {name: "on_gate_resolved", type: "Callable[[str, str], None] | None", default: "None", description: "Called when an approval gate is resolved. Receives the gate name and status."},
+  {name: "on_dynamic_expand", type: "Callable[[str, list[str]], None] | None", default: "None", description: "Called when a dynamic expander adds new nodes."},
+  {name: "on_resource_acquired", type: "Callable[[str, dict], None] | None", default: "None", description: "Called when a node acquires resources."},
+  {name: "on_resource_released", type: "Callable[[str, dict], None] | None", default: "None", description: "Called when a node releases resources."},
+]} />
+
+```python
+import dagron
+
+callbacks = dagron.ExecutionCallbacks(
+    on_start=lambda name: print(f"[START] {name}"),
+    on_complete=lambda name, result: print(f"[DONE]  {name} -> {result}"),
+    on_failure=lambda name, err: print(f"[FAIL]  {name}: {err}"),
+    on_skip=lambda name: print(f"[SKIP]  {name}"),
+)
+
+executor = dagron.DAGExecutor(dag, callbacks=callbacks)
+result = executor.execute(tasks)
+```
+
+---
+
+## Timeouts and Cancellation
+
+### Global timeout
+
+Pass a `timeout` to `.execute()` to set a wall-clock limit on the entire
+execution:
+
+```python
+result = executor.execute(tasks, timeout=30.0)
+print(result.timed_out)  # number of nodes that exceeded the timeout
+```
+
+### External cancellation
+
+Use a `threading.Event` (or `asyncio.Event` for async) to cancel execution from
+another thread:
+
+```python
+import threading
+
+cancel = threading.Event()
+
+def watchdog():
+    import time
+    time.sleep(10)
+    cancel.set()
+
+threading.Thread(target=watchdog, daemon=True).start()
+result = executor.execute(tasks, cancel_event=cancel)
+print(result.cancelled)  # number of nodes cancelled
+```
+
+---
+
+## Tracing
+
+Enable execution tracing to produce Chrome-compatible trace data:
+
+```python
+executor = dagron.DAGExecutor(dag, enable_tracing=True)
+result = executor.execute(tasks)
+
+# Write trace to file for chrome://tracing
+with open("trace.json", "w") as f:
+    f.write(result.trace.to_json())
+```
+
+See the [Tracing & Profiling](/guide/observability/tracing-profiling) guide for
+visualization instructions.
+
+---
+
+## Related
+
+- [DAG](/api/core/core) — the graph driving execution order.
+- [Pipeline](/api/execution/pipeline) — a higher-level decorator-based execution API.
+- [Incremental Execution](/api/execution/incremental) — re-execute only changed nodes.
+- [Caching](/api/execution/caching) — skip nodes whose inputs have not changed.
+- [Resource Scheduling](/api/execution/resources) — GPU/CPU/memory-aware execution.
