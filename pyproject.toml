@@ -8,6 +8,14 @@ version = "0.1.0"
 description = "A fast Rust-backed DAG engine for Python"
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+ray = ["ray>=2.0"]
+celery = ["celery>=5.0"]
+viz = ["graphviz>=0.20"]
+pandas = ["pandas>=2.0"]
+polars = ["polars>=0.20"]
+all = ["ray>=2.0", "celery>=5.0", "graphviz>=0.20", "pandas>=2.0", "polars>=0.20"]
+
 [tool.maturin]
 manifest-path = "crates/dagron-py/Cargo.toml"
 python-source = "py_src"
@@ -84,5 +92,9 @@ module = [
     "polars.*",
     "networkx",
     "networkx.*",
+    "ray",
+    "ray.*",
+    "celery",
+    "celery.*",
 ]
 ignore_missing_imports = true

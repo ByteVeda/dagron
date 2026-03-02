@@ -1,6 +1,13 @@
 """Execution subpackage — everything that runs DAG tasks."""
 
 from dagron.execution._types import ExecutionCallbacks, ExecutionResult, NodeResult, NodeStatus
+from dagron.execution.backends import (
+    CeleryBackend,
+    DistributedBackend,
+    MultiprocessingBackend,
+    RayBackend,
+    ThreadBackend,
+)
 from dagron.execution.cached_executor import CachedDAGExecutor, CachedExecutionResult
 from dagron.execution.checkpoint import CheckpointExecutor, CheckpointInfo
 from dagron.execution.conditions import ConditionalDAGBuilder, ConditionalExecutor
@@ -12,6 +19,7 @@ from dagron.execution.content_cache import (
     FileSystemCacheBackend,
 )
 from dagron.execution.distributed import PartitionedDAGExecutor
+from dagron.execution.distributed_executor import DistributedExecutionResult, DistributedExecutor
 from dagron.execution.dynamic import DynamicExecutor, DynamicModification, DynamicNodeSpec
 from dagron.execution.executor import AsyncDAGExecutor, DAGExecutor
 from dagron.execution.gates import (
@@ -44,12 +52,16 @@ __all__ = [
     "CacheStats",
     "CachedDAGExecutor",
     "CachedExecutionResult",
+    "CeleryBackend",
     "CheckpointExecutor",
     "CheckpointInfo",
     "ConditionalDAGBuilder",
     "ConditionalExecutor",
     "ContentAddressableCache",
     "DAGExecutor",
+    "DistributedBackend",
+    "DistributedExecutionResult",
+    "DistributedExecutor",
     "DynamicExecutor",
     "DynamicModification",
     "DynamicNodeSpec",
@@ -63,18 +75,21 @@ __all__ = [
     "GateTimeoutError",
     "IncrementalExecutor",
     "IncrementalResult",
+    "MultiprocessingBackend",
     "NodeProfile",
     "NodeResult",
     "NodeStatus",
     "PartitionedDAGExecutor",
     "Pipeline",
     "ProfileReport",
+    "RayBackend",
     "ReactiveDAG",
     "ResourceAwareExecutor",
     "ResourcePool",
     "ResourceRequirements",
     "ResourceSnapshot",
     "ResourceTimeline",
+    "ThreadBackend",
     "TraceEvent",
     "TraceEventType",
     "profile_execution",

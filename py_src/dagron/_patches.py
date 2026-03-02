@@ -3,7 +3,7 @@
 
 def apply_patches() -> None:
     from dagron._internal import DAG
-    from dagron.analysis import explain, lint, query, what_if
+    from dagron.analysis import explain, lint, query, track_lineage, what_if
     from dagron.display import _repr_svg_, pretty_print
     from dagron.integration import from_records
 
@@ -14,3 +14,4 @@ def apply_patches() -> None:
     DAG.what_if = lambda self, **kw: what_if(self, **kw)  # type: ignore[method-assign]
     DAG.lint = lambda self, **kw: lint(self, **kw)  # type: ignore[method-assign]
     DAG.query = lambda self, expr: query(self, expr)  # type: ignore[method-assign]
+    DAG.track_lineage = lambda self, result: track_lineage(self, result)  # type: ignore[attr-defined]

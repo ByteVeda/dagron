@@ -55,6 +55,15 @@ from dagron.analysis import (
     DAGSchema as DAGSchema,
 )
 from dagron.analysis import (
+    ImpactRecord as ImpactRecord,
+)
+from dagron.analysis import (
+    LineageRecord as LineageRecord,
+)
+from dagron.analysis import (
+    LineageReport as LineageReport,
+)
+from dagron.analysis import (
     LintReport as LintReport,
 )
 from dagron.analysis import (
@@ -69,8 +78,26 @@ from dagron.analysis import (
 from dagron.analysis import (
     WhatIfResult as WhatIfResult,
 )
+from dagron.analysis import (
+    track_lineage as track_lineage,
+)
 from dagron.builder import DAGBuilder as DAGBuilder
 from dagron.compose import compose as compose
+from dagron.contracts import (
+    ContractValidator as ContractValidator,
+)
+from dagron.contracts import (
+    ContractViolation as ContractViolation,
+)
+from dagron.contracts import (
+    NodeContract as NodeContract,
+)
+from dagron.contracts import (
+    extract_contracts as extract_contracts,
+)
+from dagron.contracts import (
+    validate_contracts as validate_contracts,
+)
 from dagron.dataframe import (
     ColumnSchema as ColumnSchema,
 )
@@ -90,6 +117,9 @@ from dagron.execution import (
     AsyncDAGExecutor as AsyncDAGExecutor,
 )
 from dagron.execution import (
+    CeleryBackend as CeleryBackend,
+)
+from dagron.execution import (
     CheckpointExecutor as CheckpointExecutor,
 )
 from dagron.execution import (
@@ -103,6 +133,15 @@ from dagron.execution import (
 )
 from dagron.execution import (
     DAGExecutor as DAGExecutor,
+)
+from dagron.execution import (
+    DistributedBackend as DistributedBackend,
+)
+from dagron.execution import (
+    DistributedExecutionResult as DistributedExecutionResult,
+)
+from dagron.execution import (
+    DistributedExecutor as DistributedExecutor,
 )
 from dagron.execution import (
     ExecutionCallbacks as ExecutionCallbacks,
@@ -120,6 +159,9 @@ from dagron.execution import (
     IncrementalResult as IncrementalResult,
 )
 from dagron.execution import (
+    MultiprocessingBackend as MultiprocessingBackend,
+)
+from dagron.execution import (
     NodeProfile as NodeProfile,
 )
 from dagron.execution import (
@@ -135,7 +177,13 @@ from dagron.execution import (
     ProfileReport as ProfileReport,
 )
 from dagron.execution import (
+    RayBackend as RayBackend,
+)
+from dagron.execution import (
     ReactiveDAG as ReactiveDAG,
+)
+from dagron.execution import (
+    ThreadBackend as ThreadBackend,
 )
 from dagron.execution import (
     TraceEvent as TraceEvent,

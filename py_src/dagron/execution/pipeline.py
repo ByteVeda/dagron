@@ -159,6 +159,23 @@ class Pipeline:
         """Names of all tasks in the pipeline."""
         return list(self._specs.keys())
 
+    def validate_contracts(
+        self,
+        extra_contracts: dict[str, Any] | None = None,
+    ) -> list[Any]:
+        """Extract type contracts from task annotations and validate them.
+
+        Args:
+            extra_contracts: Optional manually-specified contracts that
+                override auto-extracted ones.
+
+        Returns:
+            List of :class:`ContractViolation` (empty if valid).
+        """
+        from dagron.contracts import validate_contracts
+
+        return validate_contracts(self, extra_contracts)
+
     def _make_task_callables(self, overrides: dict[str, Any] | None = None) -> dict[str, Callable[[], Any]]:
         """Build the task dict for executors, wiring outputs as inputs."""
         results: dict[str, Any] = {}
