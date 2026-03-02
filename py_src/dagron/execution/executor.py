@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from dagron._internal import DAG
+    from dagron.plugins.hooks import HookRegistry
 
 from dagron.execution._helpers import _record_skip, _run_sync_task
 from dagron.execution._types import (
@@ -20,6 +21,14 @@ from dagron.execution._types import (
     NodeResult,
     NodeStatus,
 )
+
+
+def _fire_hook(hooks: HookRegistry | None, **kwargs: Any) -> None:
+    """Fire a hook if the registry is available."""
+    if hooks is not None:
+        from dagron.plugins.hooks import HookContext
+
+        hooks.fire(HookContext(**kwargs))
 
 
 class DAGExecutor:
@@ -44,6 +53,7 @@ class DAGExecutor:
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
         enable_tracing: bool = False,
+        hooks: HookRegistry | None = None,
     ):
         self._dag = dag
         self._max_workers = max_workers
@@ -51,6 +61,7 @@ class DAGExecutor:
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
         self._enable_tracing = enable_tracing
+        self._hooks = hooks
 
     def execute(
         self,
@@ -72,6 +83,7 @@ class DAGExecutor:
             ExecutionResult with per-node results and aggregate counts.
         """
         from dagron.execution.tracing import ExecutionTrace, TraceEventType
+        from dagron.plugins.hooks import HookEvent
 
         if self._max_workers is not None:
             plan = self._dag.execution_plan_constrained(self._max_workers, self._costs)
@@ -82,6 +94,8 @@ class DAGExecutor:
         result = ExecutionResult()
         failed_nodes: set[str] = set()
         start_time = time.monotonic()
+
+        _fire_hook(self._hooks, event=HookEvent.PRE_EXECUTE, dag=self._dag)
 
         if trace:
             trace.record(TraceEventType.EXECUTION_STARTED)
@@ -141,6 +155,7 @@ class DAGExecutor:
 
                     if trace:
                         trace.record(TraceEventType.NODE_STARTED, node_name=name)
+                    _fire_hook(self._hooks, event=HookEvent.PRE_NODE, dag=self._dag, node_name=name)
                     futures[pool.submit(_run_sync_task, name, task_fn, self._callbacks)] = name
 
                 # Wait for all futures in this step
@@ -157,6 +172,10 @@ class DAGExecutor:
                     result.node_results[name] = nr
                     if nr.status == NodeStatus.COMPLETED:
                         result.succeeded += 1
+                        _fire_hook(
+                            self._hooks, event=HookEvent.POST_NODE,
+                            dag=self._dag, node_name=name, node_result=nr.result,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_COMPLETED,
@@ -166,6 +185,10 @@ class DAGExecutor:
                     elif nr.status == NodeStatus.FAILED:
                         result.failed += 1
                         failed_nodes.add(name)
+                        _fire_hook(
+                            self._hooks, event=HookEvent.ON_ERROR,
+                            dag=self._dag, node_name=name, error=nr.error,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_FAILED,
@@ -176,6 +199,10 @@ class DAGExecutor:
                     elif nr.status == NodeStatus.TIMED_OUT:
                         result.timed_out += 1
                         failed_nodes.add(name)
+                        _fire_hook(
+                            self._hooks, event=HookEvent.ON_ERROR,
+                            dag=self._dag, node_name=name,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_TIMED_OUT,
@@ -193,6 +220,10 @@ class DAGExecutor:
 
         result.total_duration_seconds = time.monotonic() - start_time
         result.trace = trace
+        _fire_hook(
+            self._hooks, event=HookEvent.POST_EXECUTE,
+            dag=self._dag, execution_result=result,
+        )
         return result
 
 
@@ -220,6 +251,7 @@ class AsyncDAGExecutor:
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
         enable_tracing: bool = False,
+        hooks: HookRegistry | None = None,
     ):
         self._dag = dag
         self._max_workers = max_workers
@@ -227,6 +259,7 @@ class AsyncDAGExecutor:
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
         self._enable_tracing = enable_tracing
+        self._hooks = hooks
 
     async def execute(
         self,
@@ -248,6 +281,7 @@ class AsyncDAGExecutor:
             ExecutionResult with per-node results and aggregate counts.
         """
         from dagron.execution.tracing import ExecutionTrace, TraceEventType
+        from dagron.plugins.hooks import HookEvent
 
         if self._max_workers is not None:
             plan = self._dag.execution_plan_constrained(self._max_workers, self._costs)
@@ -259,6 +293,8 @@ class AsyncDAGExecutor:
         result = ExecutionResult()
         failed_nodes: set[str] = set()
         start_time = time.monotonic()
+
+        _fire_hook(self._hooks, event=HookEvent.PRE_EXECUTE, dag=self._dag)
 
         if trace:
             trace.record(TraceEventType.EXECUTION_STARTED)
@@ -312,6 +348,7 @@ class AsyncDAGExecutor:
 
                 if trace:
                     trace.record(TraceEventType.NODE_STARTED, node_name=name)
+                _fire_hook(self._hooks, event=HookEvent.PRE_NODE, dag=self._dag, node_name=name)
                 coros.append(self._run_task(name, task_fn, semaphore, timeout))
                 names.append(name)
 
@@ -321,6 +358,10 @@ class AsyncDAGExecutor:
                     result.node_results[name] = nr
                     if nr.status == NodeStatus.COMPLETED:
                         result.succeeded += 1
+                        _fire_hook(
+                            self._hooks, event=HookEvent.POST_NODE,
+                            dag=self._dag, node_name=name, node_result=nr.result,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_COMPLETED,
@@ -330,6 +371,10 @@ class AsyncDAGExecutor:
                     elif nr.status == NodeStatus.FAILED:
                         result.failed += 1
                         failed_nodes.add(name)
+                        _fire_hook(
+                            self._hooks, event=HookEvent.ON_ERROR,
+                            dag=self._dag, node_name=name, error=nr.error,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_FAILED,
@@ -340,6 +385,10 @@ class AsyncDAGExecutor:
                     elif nr.status == NodeStatus.TIMED_OUT:
                         result.timed_out += 1
                         failed_nodes.add(name)
+                        _fire_hook(
+                            self._hooks, event=HookEvent.ON_ERROR,
+                            dag=self._dag, node_name=name,
+                        )
                         if trace:
                             trace.record(
                                 TraceEventType.NODE_TIMED_OUT,
@@ -355,6 +404,10 @@ class AsyncDAGExecutor:
 
         result.total_duration_seconds = time.monotonic() - start_time
         result.trace = trace
+        _fire_hook(
+            self._hooks, event=HookEvent.POST_EXECUTE,
+            dag=self._dag, execution_result=result,
+        )
         return result
 
     async def _run_task(

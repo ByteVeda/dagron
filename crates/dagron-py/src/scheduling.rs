@@ -220,6 +220,31 @@ impl PyDAG {
         convert_plan(py, plan)
     }
 
+    /// Compute bottom levels for all nodes.
+    ///
+    /// Args:
+    ///     costs: Optional dict mapping node names to duration/cost values.
+    ///         Missing nodes default to 1.0.
+    ///
+    /// Returns:
+    ///     Dict mapping node names to their bottom level values.
+    ///
+    /// Raises:
+    ///     CycleError: If the graph contains cycles.
+    #[pyo3(signature = (costs=None))]
+    pub fn bottom_levels(
+        &self,
+        py: Python<'_>,
+        costs: Option<HashMap<String, f64>>,
+    ) -> PyResult<HashMap<String, f64>> {
+        let cost_map = to_ahash(costs);
+        let inner_ref = &self.inner;
+        let result = py
+            .allow_threads(|| inner_ref.bottom_levels(&cost_map))
+            .map_err(errors::into_pyerr)?;
+        Ok(result.into_iter().collect())
+    }
+
     /// Find the critical path through the DAG.
     ///
     /// Args:

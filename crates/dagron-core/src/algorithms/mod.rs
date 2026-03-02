@@ -2,6 +2,7 @@ pub mod cycle;
 pub mod diff;
 pub mod dominators;
 pub mod incremental;
+pub mod partition;
 pub mod paths;
 pub mod priority_toposort;
 pub mod reachability;

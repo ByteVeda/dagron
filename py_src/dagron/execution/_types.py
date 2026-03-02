@@ -22,6 +22,7 @@ class NodeStatus(Enum):
     SKIPPED = "skipped"
     TIMED_OUT = "timed_out"
     CANCELLED = "cancelled"
+    CACHE_HIT = "cache_hit"
 
 
 @dataclass
@@ -43,6 +44,11 @@ class ExecutionCallbacks:
     on_complete: Callable[[str, Any], None] | None = None
     on_failure: Callable[[str, Exception], None] | None = None
     on_skip: Callable[[str], None] | None = None
+    on_gate_waiting: Callable[[str], None] | None = None
+    on_gate_resolved: Callable[[str, str], None] | None = None
+    on_dynamic_expand: Callable[[str, Any], None] | None = None
+    on_resource_acquired: Callable[[str, dict[str, int]], None] | None = None
+    on_resource_released: Callable[[str, dict[str, int]], None] | None = None
 
 
 @dataclass

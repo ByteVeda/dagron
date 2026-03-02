@@ -125,9 +125,25 @@ impl<P> DAG<P> {
         Ok((node_ids, total))
     }
 
+    /// Compute bottom levels for all nodes, returning name→level map.
+    /// Bottom level = longest path from the node to any leaf (inclusive of the node's own cost).
+    /// Missing nodes default to cost 1.0.
+    pub fn bottom_levels(
+        &self,
+        costs: &ahash::AHashMap<String, f64>,
+    ) -> Result<ahash::AHashMap<String, f64>, DagronError> {
+        let idx_costs = self.names_to_indices(costs)?;
+        let bl = algorithms::compute_bottom_levels(&self.graph, &idx_costs);
+        let mut result = ahash::AHashMap::with_capacity(bl.len());
+        for (idx, level) in bl {
+            result.insert(self.graph[idx].name.clone(), level);
+        }
+        Ok(result)
+    }
+
     /// Convert a name→value map to an index→value map.
     /// Ignores names not found in the graph (they just won't be in the result).
-    fn names_to_indices(
+    pub(crate) fn names_to_indices(
         &self,
         name_map: &ahash::AHashMap<String, f64>,
     ) -> Result<ahash::AHashMap<crate::types::InternalNodeIndex, f64>, DagronError> {

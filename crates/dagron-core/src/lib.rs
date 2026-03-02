@@ -8,6 +8,9 @@ pub use algorithms::reachability::ReachabilityIndex;
 pub use algorithms::subgraph::SubgraphDirection;
 pub use errors::DagronError;
 pub use graph::concurrent::ConcurrentDAG;
+pub use graph::partition::{
+    PartitionInfo as GraphPartitionInfo, PartitionResult as GraphPartitionResult,
+};
 pub use graph::scheduling::{ExecutionPlanResult, ExecutionStepResult, ScheduledNodeId};
 pub use graph::serialization::{SerializableEdge, SerializableGraph, SerializableNode};
 pub use graph::stats::GraphStats;
