@@ -8,6 +8,15 @@ version = "0.1.0"
 description = "A fast Rust-backed DAG engine for Python"
 requires-python = ">=3.12"
 
+[project.optional-dependencies]
+ray = ["ray>=2.0"]
+celery = ["celery>=5.0"]
+viz = ["graphviz>=0.20"]
+pandas = ["pandas>=2.0"]
+polars = ["polars>=0.20"]
+dashboard = []  # Requires building with: maturin develop --features dashboard
+all = ["ray>=2.0", "celery>=5.0", "graphviz>=0.20", "pandas>=2.0", "polars>=0.20"]
+
 [tool.maturin]
 manifest-path = "crates/dagron-py/Cargo.toml"
 python-source = "py_src"
@@ -25,6 +34,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "ruff>=0.8.0",
     "mypy>=1.10",
+    "types-requests>=2.32.4.20260107",
 ]
 bench = [
     "pytest-benchmark>=5.1.0",
@@ -43,6 +53,7 @@ ignore = ["E501", "UP007"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "B011", "PT011", "SIM300"]
 "py_src/dagron/__init__.py" = ["E731"]
+"py_src/dagron/_patches.py" = ["E731"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["dagron"]
@@ -63,4 +74,29 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "graphviz.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_any_generics = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pandas",
+    "pandas.*",
+    "numpy",
+    "numpy.*",
+    "polars",
+    "polars.*",
+    "networkx",
+    "networkx.*",
+    "ray",
+    "ray.*",
+    "celery",
+    "celery.*",
+]
 ignore_missing_imports = true

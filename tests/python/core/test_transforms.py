@@ -232,4 +232,4 @@ class TestMerge:
         dag2 = DAG()
 
         with pytest.raises(ValueError, match="Invalid conflict strategy"):
-            dag1.merge(dag2, conflict="invalid")
+            dag1.merge(dag2, conflict="invalid")  # type: ignore[arg-type]

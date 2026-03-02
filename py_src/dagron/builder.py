@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from dagron._internal import DAG
+
+if TYPE_CHECKING:
+    from dagron.contracts import ContractViolation, NodeContract
 
 
 class DAGBuilder:
@@ -22,6 +27,7 @@ class DAGBuilder:
     def __init__(self) -> None:
         self._nodes: list[tuple[str, object, object]] = []
         self._edges: list[tuple[str, str, float | None, str | None]] = []
+        self._contracts: dict[str, NodeContract] = {}
 
     def add_node(
         self,
@@ -62,6 +68,46 @@ class DAGBuilder:
         """
         self._edges.append((from_node, to_node, weight, label))
         return self
+
+    def contract(
+        self,
+        node: str,
+        *,
+        inputs: dict[str, type] | None = None,
+        output: type = object,
+    ) -> DAGBuilder:
+        """Attach a type contract to a node.
+
+        Args:
+            node: Name of the node.
+            inputs: Mapping of dependency name to expected input type.
+            output: The declared output type.
+
+        Returns:
+            self for chaining.
+        """
+        from dagron.contracts import NodeContract
+
+        self._contracts[node] = NodeContract(
+            inputs=inputs or {},
+            output=output,
+        )
+        return self
+
+    def validate_contracts(self) -> list[ContractViolation]:
+        """Validate all attached type contracts.
+
+        Builds the DAG temporarily and checks every edge for type
+        compatibility between producer outputs and consumer inputs.
+
+        Returns:
+            List of :class:`ContractViolation` (empty if valid).
+        """
+        from dagron.contracts import ContractValidator
+
+        dag = self.build()
+        validator = ContractValidator(dag, self._contracts)
+        return validator.validate()
 
     def build(self) -> DAG:
         """Build and return the DAG.

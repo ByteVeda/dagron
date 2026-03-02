@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from dagron._internal import DAG
-    from dagron.executor import ExecutionResult
+    from dagron.execution._types import ExecutionResult
 
 
 @dataclass
@@ -82,7 +82,7 @@ def profile_execution(dag: DAG, result: ExecutionResult) -> ProfileReport:
     Returns:
         A ProfileReport with detailed analysis.
     """
-    from dagron.executor import NodeStatus
+    from dagron.execution._types import NodeStatus
 
     # Extract durations from completed nodes
     durations: dict[str, float] = {}

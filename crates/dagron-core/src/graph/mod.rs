@@ -5,6 +5,7 @@ pub mod diff;
 pub mod incremental;
 pub mod introspection;
 pub mod matching;
+pub mod partition;
 pub mod paths;
 pub mod reachability;
 pub mod scheduling;

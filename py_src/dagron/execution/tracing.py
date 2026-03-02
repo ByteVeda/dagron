@@ -22,6 +22,15 @@ class TraceEventType(Enum):
     NODE_CANCELLED = "node_cancelled"
     STEP_COMPLETED = "step_completed"
     EXECUTION_COMPLETED = "execution_completed"
+    # Approval gates
+    NODE_GATE_WAITING = "node_gate_waiting"
+    NODE_GATE_RESOLVED = "node_gate_resolved"
+    # Resource management
+    RESOURCE_ACQUIRED = "resource_acquired"
+    RESOURCE_RELEASED = "resource_released"
+    # Content-addressable caching
+    NODE_CACHE_HIT = "node_cache_hit"
+    NODE_CACHE_MISS = "node_cache_miss"
 
 
 @dataclass

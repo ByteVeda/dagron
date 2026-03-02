@@ -1,6 +1,6 @@
 """Type stubs for dagron._internal (Rust extension module)."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Any, Literal
 
 from dagron.builder import DAGBuilder
@@ -154,7 +154,7 @@ class DAG:
     ) -> NodeId: ...
     def add_nodes(
         self,
-        nodes: list[str | tuple[str, Any] | tuple[str, Any, Any]],
+        nodes: Sequence[str | tuple[str, Any] | tuple[str, Any, Any]],
     ) -> list[NodeId]: ...
     def add_edge(
         self,
@@ -367,6 +367,32 @@ class DAG:
         edge_fn: Callable[[Any], list[str]] | None = None,
         payload_fn: Callable[[Any], Any] | None = None,
     ) -> DAG: ...
+
+    # --- Analysis (monkey-patched) ---
+    def explain(
+        self,
+        node: str,
+        costs: dict[str, float] | None = None,
+    ) -> Any: ...
+    def what_if(
+        self,
+        *,
+        remove_nodes: list[str] | None = None,
+        remove_edges: list[tuple[str, str]] | None = None,
+        add_nodes: list[str] | None = None,
+        add_edges: list[tuple[str, str]] | None = None,
+        costs: dict[str, float] | None = None,
+    ) -> Any: ...
+    def lint(
+        self,
+        *,
+        max_fan_in: int = 10,
+        max_fan_out: int = 10,
+        max_depth: int = 50,
+        warn_disconnected: bool = True,
+        warn_redundant_edges: bool = True,
+    ) -> Any: ...
+    def query(self, expr: str) -> list[str]: ...
 
 # Exceptions
 class DagronError(Exception): ...

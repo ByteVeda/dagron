@@ -18,48 +18,178 @@ from dagron._internal import (
     ReachabilityIndex,
     ScheduledNode,
 )
+from dagron._patches import apply_patches as _apply_patches
+from dagron.analysis import (
+    DAGSchema,
+    ImpactRecord,
+    LineageRecord,
+    LineageReport,
+    LintReport,
+    LintSeverity,
+    LintWarning,
+    NodeExplanation,
+    WhatIfResult,
+    track_lineage,
+)
 from dagron.builder import DAGBuilder
-from dagron.display import _repr_svg_, pretty_print
-from dagron.executor import (
+from dagron.compose import compose
+from dagron.contracts import (
+    ContractValidator,
+    ContractViolation,
+    NodeContract,
+    extract_contracts,
+    validate_contracts,
+)
+from dagron.dataframe import (
+    ColumnSchema,
+    DataFramePipeline,
+    DataFrameSchema,
+    SchemaViolation,
+    validate_schema,
+)
+from dagron.display import pretty_print
+from dagron.execution import (
+    ApprovalGate,
     AsyncDAGExecutor,
+    AsyncResourceAwareExecutor,
+    CachedDAGExecutor,
+    CachedExecutionResult,
+    CachePolicy,
+    CacheStats,
+    CeleryBackend,
+    CheckpointExecutor,
+    CheckpointInfo,
+    ConditionalDAGBuilder,
+    ConditionalExecutor,
+    ContentAddressableCache,
     DAGExecutor,
+    DistributedBackend,
+    DistributedExecutionResult,
+    DistributedExecutor,
+    DynamicExecutor,
+    DynamicModification,
+    DynamicNodeSpec,
     ExecutionCallbacks,
     ExecutionResult,
+    ExecutionTrace,
+    GateController,
+    GateRejectedError,
+    GateStatus,
+    GateTimeoutError,
     IncrementalExecutor,
     IncrementalResult,
+    MultiprocessingBackend,
+    NodeProfile,
     NodeResult,
     NodeStatus,
+    PartitionedDAGExecutor,
+    Pipeline,
+    ProfileReport,
+    RayBackend,
+    ReactiveDAG,
+    ResourceAwareExecutor,
+    ResourcePool,
+    ResourceRequirements,
+    ResourceSnapshot,
+    ResourceTimeline,
+    ThreadBackend,
+    TraceEvent,
+    TraceEventType,
+    profile_execution,
+    task,
 )
 from dagron.integration import from_records
-from dagron.profiling import NodeProfile, ProfileReport, profile_execution
-from dagron.tracing import ExecutionTrace, TraceEvent, TraceEventType
+from dagron.plugins import (
+    DagronPlugin,
+    HookContext,
+    HookEvent,
+    HookRegistry,
+    PluginManager,
+)
+from dagron.template import DAGTemplate, TemplateError, TemplateParam
+from dagron.versioning import Mutation, MutationType, VersionedDAG
 
-# Monkey-patch for convenience
-DAG.from_records = staticmethod(from_records)  # type: ignore[attr-defined]
-DAG.pretty_print = lambda self, **kw: pretty_print(self, **kw)  # type: ignore[attr-defined]
-DAG._repr_svg_ = lambda self: _repr_svg_(self)  # type: ignore[attr-defined]
+_apply_patches()
+del _apply_patches
+
+# Module-level plugin manager singleton
+_plugin_manager = PluginManager()
 
 __version__ = "0.1.0"
 
+
+def __getattr__(name: str) -> object:
+    if name == "DashboardPlugin":
+        from dagron.dashboard import DashboardPlugin
+
+        return DashboardPlugin
+    raise AttributeError(f"module 'dagron' has no attribute {name!r}")
+
+
 __all__ = [
     "DAG",
+    "ApprovalGate",
     "AsyncDAGExecutor",
+    "AsyncResourceAwareExecutor",
+    "CachePolicy",
+    "CacheStats",
+    "CachedDAGExecutor",
+    "CachedExecutionResult",
+    "CeleryBackend",
+    "CheckpointExecutor",
+    "CheckpointInfo",
+    "ColumnSchema",
+    "ConditionalDAGBuilder",
+    "ConditionalExecutor",
+    "ContentAddressableCache",
+    "ContractValidator",
+    "ContractViolation",
     "CycleError",
     "DAGBuilder",
     "DAGExecutor",
+    "DAGSchema",
+    "DAGTemplate",
     "DagronError",
+    "DagronPlugin",
+    "DashboardPlugin",
+    "DataFramePipeline",
+    "DataFrameSchema",
+    "DistributedBackend",
+    "DistributedExecutionResult",
+    "DistributedExecutor",
     "DuplicateNodeError",
+    "DynamicExecutor",
+    "DynamicModification",
+    "DynamicNodeSpec",
     "EdgeNotFoundError",
     "ExecutionCallbacks",
     "ExecutionPlan",
     "ExecutionResult",
     "ExecutionStep",
     "ExecutionTrace",
+    "GateController",
+    "GateRejectedError",
+    "GateStatus",
+    "GateTimeoutError",
     "GraphDiff",
     "GraphError",
     "GraphStats",
+    "HookContext",
+    "HookEvent",
+    "HookRegistry",
+    "ImpactRecord",
     "IncrementalExecutor",
     "IncrementalResult",
+    "LineageRecord",
+    "LineageReport",
+    "LintReport",
+    "LintSeverity",
+    "LintWarning",
+    "MultiprocessingBackend",
+    "Mutation",
+    "MutationType",
+    "NodeContract",
+    "NodeExplanation",
     "NodeId",
     "NodeIterator",
     "NodeLevelIterator",
@@ -67,12 +197,34 @@ __all__ = [
     "NodeProfile",
     "NodeResult",
     "NodeStatus",
+    "PartitionedDAGExecutor",
+    "Pipeline",
+    "PluginManager",
     "ProfileReport",
+    "RayBackend",
     "ReachabilityIndex",
+    "ReactiveDAG",
+    "ResourceAwareExecutor",
+    "ResourcePool",
+    "ResourceRequirements",
+    "ResourceSnapshot",
+    "ResourceTimeline",
     "ScheduledNode",
+    "SchemaViolation",
+    "TemplateError",
+    "TemplateParam",
+    "ThreadBackend",
     "TraceEvent",
     "TraceEventType",
+    "VersionedDAG",
+    "WhatIfResult",
+    "compose",
+    "extract_contracts",
     "from_records",
     "pretty_print",
     "profile_execution",
+    "task",
+    "track_lineage",
+    "validate_contracts",
+    "validate_schema",
 ]

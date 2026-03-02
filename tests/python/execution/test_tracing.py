@@ -30,6 +30,7 @@ def test_trace_event_sequence():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 1, "b": lambda: 2})
 
+    assert result.trace is not None
     events = result.trace.events
     event_types = [e.event_type for e in events]
 
@@ -48,6 +49,7 @@ def test_events_for_node():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 1, "b": lambda: 2})
 
+    assert result.trace is not None
     a_events = result.trace.events_for_node("a")
     assert len(a_events) >= 2  # at least STARTED and COMPLETED
     assert all(e.node_name == "a" for e in a_events)
@@ -59,6 +61,7 @@ def test_trace_to_json():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 42})
 
+    assert result.trace is not None
     json_str = result.trace.to_json()
     data = json.loads(json_str)
     assert isinstance(data, list)
@@ -74,6 +77,7 @@ def test_trace_to_chrome_trace():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 1, "b": lambda: 2})
 
+    assert result.trace is not None
     chrome_json = result.trace.to_chrome_trace()
     data = json.loads(chrome_json)
     assert "traceEvents" in data
@@ -92,6 +96,7 @@ def test_trace_summary():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 1, "b": lambda: 2})
 
+    assert result.trace is not None
     summary = result.trace.summary()
     assert "Execution Trace Summary" in summary
     assert "Completed: 2" in summary
@@ -108,6 +113,7 @@ def test_trace_with_failure():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": fail, "b": lambda: 2})
 
+    assert result.trace is not None
     events = result.trace.events
     event_types = [e.event_type for e in events]
     assert TraceEventType.NODE_FAILED in event_types
@@ -126,6 +132,7 @@ def test_trace_timestamps_are_monotonic():
     executor = DAGExecutor(dag, enable_tracing=True)
     result = executor.execute({"a": lambda: 1, "b": lambda: 2, "c": lambda: 3})
 
+    assert result.trace is not None
     events = result.trace.events
     for i in range(1, len(events)):
         assert events[i].timestamp >= events[i - 1].timestamp
