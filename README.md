@@ -123,7 +123,7 @@ Generate dependency-aware execution plans with `execution_plan` and `execution_p
 
 ### Execution Engines
 
-`DAGExecutor` runs tasks in a thread pool with configurable workers, while `AsyncDAGExecutor` provides native `asyncio` support for I/O-bound workflows. Both support fail-fast error handling, per-node timeouts, cancellation, and `on_start`/`on_complete`/`on_error` callbacks.
+`DAGExecutor` runs tasks in a thread pool with configurable workers, while `AsyncDAGExecutor` provides native `asyncio` support for I/O-bound workflows. Both support fail-fast error handling, per-node timeouts, cancellation, `on_start`/`on_complete`/`on_error` callbacks, and optional hook integration.
 
 ### Incremental Computation
 
@@ -164,6 +164,34 @@ Export and import graphs as JSON, binary (bincode + memory-mapped files), Graphv
 ### Visualization
 
 ASCII `pretty_print` renders graphs in vertical or horizontal layout directly in the terminal. Jupyter notebooks get inline SVG rendering via Graphviz, DOT, or a built-in fallback renderer.
+
+### DAG Templates
+
+Define parameterized DAG blueprints with `DAGTemplate` and `{{placeholder}}` substitution. Render concrete DAGs, builders, or pipelines by supplying parameter values at runtime. Supports type validation, default values, custom validators, and configurable delimiters.
+
+### Plugin & Hook System
+
+Extend dagron with `DagronPlugin` subclasses discovered via `entry_points`. `HookRegistry` fires lifecycle events (`PRE_EXECUTE`, `POST_EXECUTE`, `PRE_NODE`, `POST_NODE`, `ON_ERROR`, `PRE_BUILD`, `POST_BUILD`) with priority ordering. Includes registries for custom serializers, executors, and node types.
+
+### Approval Gates
+
+`GateController` pauses execution at designated nodes and waits for manual approval or rejection. Thread-safe with both sync and async support, configurable timeouts, and integration with execution callbacks and tracing.
+
+### Dynamic DAG Modification
+
+`DynamicExecutor` adds or removes nodes mid-execution based on runtime results. Expander callbacks receive a node's output and return `DynamicModification` specs. Operates on a runtime snapshot so the original DAG stays immutable.
+
+### Resource-Aware Scheduling
+
+Nodes declare `ResourceRequirements` (GPU, CPU, memory) and `ResourcePool` enforces capacity constraints. `ResourceAwareExecutor` and `AsyncResourceAwareExecutor` use bottom-level priority scheduling to dispatch the highest-value ready node that fits available resources.
+
+### Graph Partitioning
+
+Split large DAGs into balanced partitions with three Rust-native algorithms: level-based grouping, cost-balanced assignment, and communication-minimizing Kernighan-Lin refinement. `PartitionedDAGExecutor` executes partitions in dependency order, each internally parallelized.
+
+### Content-Addressable Caching
+
+Merkle-tree cache keys propagate upstream changes automatically: `CacheKeyBuilder` hashes task source code and predecessor results so any upstream change invalidates all affected downstream nodes. `FileSystemCacheBackend` stores results as pickle with LRU/TTL/size eviction. `CachedDAGExecutor` skips unchanged nodes across runs.
 
 ## Requirements
 
