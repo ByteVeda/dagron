@@ -98,6 +98,9 @@ from dagron.contracts import (
 from dagron.contracts import (
     validate_contracts as validate_contracts,
 )
+from dagron.dashboard import (
+    DashboardPlugin as DashboardPlugin,
+)
 from dagron.dataframe import (
     ColumnSchema as ColumnSchema,
 )

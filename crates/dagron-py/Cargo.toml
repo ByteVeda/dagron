@@ -8,8 +8,13 @@ rust-version = "1.83"
 name = "dagron"
 crate-type = ["cdylib", "lib"]
 
+[features]
+extension-module = ["pyo3/extension-module"]
+dashboard = ["dagron-ui"]
+
 [dependencies]
 dagron-core = { path = "../dagron-core" }
+dagron-ui = { path = "../dagron-ui", optional = true }
 ahash = { workspace = true }
 pyo3 = { workspace = true }
 serde_json = { workspace = true }

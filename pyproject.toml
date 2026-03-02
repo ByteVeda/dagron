@@ -14,6 +14,7 @@ celery = ["celery>=5.0"]
 viz = ["graphviz>=0.20"]
 pandas = ["pandas>=2.0"]
 polars = ["polars>=0.20"]
+dashboard = []  # Requires building with: maturin develop --features dashboard
 all = ["ray>=2.0", "celery>=5.0", "graphviz>=0.20", "pandas>=2.0", "polars>=0.20"]
 
 [tool.maturin]
@@ -33,6 +34,7 @@ dev = [
     "pytest-timeout>=2.4.0",
     "ruff>=0.8.0",
     "mypy>=1.10",
+    "types-requests>=2.32.4.20260107",
 ]
 bench = [
     "pytest-benchmark>=5.1.0",

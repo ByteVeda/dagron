@@ -1,5 +1,7 @@
 pub mod construction;
 pub mod dag;
+#[cfg(feature = "dashboard")]
+pub mod dashboard;
 pub mod diff;
 pub mod errors;
 pub mod incremental;
@@ -37,6 +39,9 @@ fn dagron(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<iterators::PyNodeLevelIterator>()?;
     m.add_class::<partition::PyPartitionInfo>()?;
     m.add_class::<partition::PyPartitionResult>()?;
+
+    #[cfg(feature = "dashboard")]
+    m.add_class::<dashboard::PyDashboardHandle>()?;
 
     // Register exception hierarchy
     m.add("DagronError", m.py().get_type::<errors::DagronError>())?;

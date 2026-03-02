@@ -117,6 +117,15 @@ _plugin_manager = PluginManager()
 
 __version__ = "0.1.0"
 
+
+def __getattr__(name: str) -> object:
+    if name == "DashboardPlugin":
+        from dagron.dashboard import DashboardPlugin
+
+        return DashboardPlugin
+    raise AttributeError(f"module 'dagron' has no attribute {name!r}")
+
+
 __all__ = [
     "DAG",
     "ApprovalGate",
@@ -142,6 +151,7 @@ __all__ = [
     "DAGTemplate",
     "DagronError",
     "DagronPlugin",
+    "DashboardPlugin",
     "DataFramePipeline",
     "DataFrameSchema",
     "DistributedBackend",
