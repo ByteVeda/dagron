@@ -101,6 +101,11 @@
   margin: 1.5rem 0;
 }
 
+[data-theme='dark'] .dag-diagram .docusaurus-mermaid-container svg .nodeLabel {
+  color: #e0e0e0 !important;
+  fill: #e0e0e0 !important;
+}
+
 
 .feature-card {
   border: 1px solid var(--ifm-color-emphasis-200);
