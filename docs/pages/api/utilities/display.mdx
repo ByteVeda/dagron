@@ -1,0 +1,255 @@
+---
+sidebar_position: 22
+title: Display
+description: API reference for dagron's display utilities -- ASCII rendering, Jupyter SVG auto-display, and custom node formatting.
+---
+
+import ApiSignature from '@site/src/components/ApiSignature';
+import ParamTable from '@site/src/components/ParamTable';
+
+# Display
+
+The display module provides visualization utilities for DAGs. It includes
+ASCII rendering for terminals and logs, and SVG generation for Jupyter
+notebooks. The SVG renderer tries Graphviz first (Python package or CLI)
+and falls back to an ASCII-in-SVG representation.
+
+```python
+from dagron.display import pretty_print, _repr_svg_
+```
+
+---
+
+## pretty_print
+
+<ApiSignature name="pretty_print" signature={`def pretty_print(
+    dag: DAG,
+    *,
+    layout: Literal["vertical", "horizontal"] = "vertical",
+    max_nodes: int = 50,
+    show_payloads: bool = False,
+    node_formatter: Callable[[str, Any], str] | None = None,
+) -> str`} />
+
+Render the DAG as an ASCII diagram. The output is a multi-line string
+suitable for printing to a terminal, writing to log files, or embedding
+in text reports.
+
+<ParamTable params={[
+  {name: "dag", type: "DAG", description: "The DAG to render."},
+  {name: "layout", type: '"vertical" | "horizontal"', default: '"vertical"', description: "Layout direction. \"vertical\" renders top-to-bottom with topological levels as rows. \"horizontal\" renders left-to-right with levels as columns."},
+  {name: "max_nodes", type: "int", default: "50", description: "Maximum number of nodes before raising ValueError. Prevents accidentally rendering very large graphs."},
+  {name: "show_payloads", type: "bool", default: "False", description: "Include payload information in node labels. When True, nodes with payloads are displayed as \"name=payload\"."},
+  {name: "node_formatter", type: "Callable[[str, Any], str] | None", default: "None", description: "Custom callable that takes (node_name, payload) and returns a label string. Overrides the default label format."},
+]} />
+
+**Returns:** `str` -- Multi-line ASCII string representing the DAG.
+
+**Raises:** `ValueError` -- If `dag.node_count()` exceeds `max_nodes`.
+
+### Vertical layout
+
+The default layout renders topological levels as rows, with edges shown
+as connectors between levels:
+
+```python
+import dagron
+from dagron.display import pretty_print
+
+dag = (
+    dagron.DAG.builder()
+    .add_edge("extract", "transform")
+    .add_edge("transform", "load")
+    .build()
+)
+
+print(pretty_print(dag))
+#        [ extract ]
+#             |
+#       [ transform ]
+#             |
+#          [ load ]
+```
+
+### Horizontal layout
+
+The horizontal layout renders levels as columns, with arrows between them:
+
+```python
+print(pretty_print(dag, layout="horizontal"))
+# [ extract ]-->[ transform ]-->[ load ]
+```
+
+### With payloads
+
+```python
+dag = dagron.DAG()
+dag.add_node("train", payload={"epochs": 10})
+dag.add_node("evaluate", payload={"metric": "f1"})
+dag.add_edge("train", "evaluate")
+
+print(pretty_print(dag, show_payloads=True))
+#  [ train={'epochs': 10} ]
+#              |
+#  [ evaluate={'metric': 'f1'} ]
+```
+
+### Custom node formatter
+
+```python
+def short_label(name: str, payload: object) -> str:
+    if payload and isinstance(payload, dict):
+        return f"{name} ({len(payload)} params)"
+    return name
+
+print(pretty_print(dag, node_formatter=short_label))
+#  [ train (1 params) ]
+#           |
+#  [ evaluate (1 params) ]
+```
+
+### Empty graphs
+
+```python
+empty = dagron.DAG()
+print(pretty_print(empty))
+# (empty graph)
+```
+
+### Large graph safety
+
+```python
+try:
+    print(pretty_print(large_dag, max_nodes=10))
+except ValueError as e:
+    print(e)
+    # Graph has 100 nodes, exceeding max_nodes=10. Increase max_nodes to render.
+```
+
+---
+
+## _repr_svg_
+
+<ApiSignature name="_repr_svg_" signature={`def _repr_svg_(
+    dag: DAG,
+    *,
+    max_nodes: int = 100,
+) -> str`} />
+
+Return an SVG representation of the DAG for Jupyter notebooks. This
+function is used by dagron's Jupyter integration to provide auto-display
+when a DAG object is the last expression in a cell.
+
+<ParamTable params={[
+  {name: "dag", type: "DAG", description: "The DAG to render as SVG."},
+  {name: "max_nodes", type: "int", default: "100", description: "Maximum number of nodes before showing a summary instead of the full graph."},
+]} />
+
+**Returns:** `str` -- SVG string.
+
+### Rendering strategy
+
+The function tries multiple rendering backends in order:
+
+1. **Empty graph** -- returns a simple SVG with `"(empty graph)"` text.
+2. **Too many nodes** -- returns a summary SVG showing node and edge counts.
+3. **Graphviz Python package** -- tries `graphviz.Source(dot).pipe(format='svg')`.
+4. **Graphviz `dot` CLI** -- tries `dot -Tsvg` via subprocess.
+5. **ASCII fallback** -- wraps the `pretty_print()` output in an SVG `<text>` element.
+
+### Jupyter auto-display
+
+When working in a Jupyter notebook, DAG objects automatically display as
+SVG. This is enabled through dagron's `_repr_svg_` integration:
+
+```python
+# In a Jupyter notebook cell:
+dag = (
+    dagron.DAG.builder()
+    .add_edge("a", "b")
+    .add_edge("b", "c")
+    .build()
+)
+
+dag  # Auto-renders as SVG in the notebook output
+```
+
+### Graphviz installation
+
+For the best rendering quality, install Graphviz:
+
+```bash
+# Python package
+pip install graphviz
+
+# System package (for the dot CLI)
+# Ubuntu/Debian:
+sudo apt install graphviz
+# macOS:
+brew install graphviz
+```
+
+### Manual SVG export
+
+```python
+from dagron.display import _repr_svg_
+
+svg = _repr_svg_(dag)
+with open("pipeline.svg", "w") as f:
+    f.write(svg)
+```
+
+---
+
+## Complete example
+
+```python
+import dagron
+from dagron.display import pretty_print, _repr_svg_
+
+# Build a pipeline
+dag = (
+    dagron.DAG.builder()
+    .add_node("fetch_api", payload={"url": "https://api.example.com"})
+    .add_node("fetch_db", payload={"table": "users"})
+    .add_node("merge")
+    .add_node("validate")
+    .add_node("store")
+    .add_edge("fetch_api", "merge")
+    .add_edge("fetch_db", "merge")
+    .add_edge("merge", "validate")
+    .add_edge("validate", "store")
+    .build()
+)
+
+# ASCII output for terminal
+print("=== Vertical ===")
+print(pretty_print(dag))
+
+print("\n=== Horizontal ===")
+print(pretty_print(dag, layout="horizontal"))
+
+print("\n=== With Payloads ===")
+print(pretty_print(dag, show_payloads=True))
+
+# Custom formatter for a clean summary
+def status_label(name: str, payload: object) -> str:
+    icon = ">" if payload else "-"
+    return f"{icon} {name}"
+
+print("\n=== Custom Labels ===")
+print(pretty_print(dag, node_formatter=status_label))
+
+# SVG export
+svg = _repr_svg_(dag)
+with open("pipeline.svg", "w") as f:
+    f.write(svg)
+print(f"\nSVG exported ({len(svg)} bytes)")
+```
+
+---
+
+## See also
+
+- [DAG](/api/core/core) -- the `to_dot()` and `to_mermaid()` export methods.
+- [Serialization guide](/guide/core-concepts/serialization) -- full guide to serialization and visualization.

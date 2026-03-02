@@ -1,0 +1,178 @@
+---
+sidebar_position: 1
+title: Introduction
+description: dagron — a high-performance DAG execution engine for Python, powered by Rust.
+slug: /
+---
+
+import FeatureCard from '@site/src/components/FeatureCard';
+
+# dagron
+
+**High-performance DAG execution engine for Python, powered by Rust.**
+
+dagron lets you define directed acyclic graphs of tasks and execute them with maximum parallelism, rich observability, and dozens of execution strategies — from simple thread pools to distributed clusters.
+
+The core graph data structure lives in Rust (via PyO3) for zero-copy speed, while the Python layer provides an ergonomic API for building, executing, analyzing, and visualizing your DAGs.
+
+```python
+import dagron
+
+dag = (
+    dagron.DAG.builder()
+    .add_node("extract")
+    .add_node("transform")
+    .add_node("load")
+    .add_edge("extract", "transform")
+    .add_edge("transform", "load")
+    .build()
+)
+
+result = dagron.DAGExecutor(dag).execute({
+    "extract": lambda: fetch_data(),
+    "transform": lambda: clean(result),
+    "load": lambda: write_to_db(result),
+})
+```
+
+## Features
+
+<div className="feature-grid">
+
+<FeatureCard
+  title="DAG Builder"
+  description="Fluent builder pattern, from_records, and Pipeline/task decorator for defining DAGs."
+  guideLink="/guide/core-concepts/building-dags"
+  apiLink="/api/core/builder"
+/>
+
+<FeatureCard
+  title="Parallel Execution"
+  description="Thread-pool and async executors with topological scheduling and cost-aware planning."
+  guideLink="/guide/core-concepts/executing-tasks"
+  apiLink="/api/execution/execution"
+/>
+
+<FeatureCard
+  title="Incremental Execution"
+  description="Early-cutoff recomputation — only re-execute what changed."
+  guideLink="/guide/execution-strategies/incremental"
+  apiLink="/api/execution/incremental"
+/>
+
+<FeatureCard
+  title="Caching"
+  description="Content-addressable Merkle-tree caching with pluggable backends."
+  guideLink="/guide/execution-strategies/caching"
+  apiLink="/api/execution/caching"
+/>
+
+<FeatureCard
+  title="Checkpointing"
+  description="Save progress to disk and resume after failures."
+  guideLink="/guide/execution-strategies/checkpointing"
+  apiLink="/api/execution/checkpoint"
+/>
+
+<FeatureCard
+  title="Conditional Execution"
+  description="Predicate-gated edges that skip branches at runtime."
+  guideLink="/guide/execution-strategies/conditional"
+  apiLink="/api/execution/conditions"
+/>
+
+<FeatureCard
+  title="Dynamic DAGs"
+  description="Expand the graph at runtime based on node results."
+  guideLink="/guide/execution-strategies/dynamic-dags"
+  apiLink="/api/execution/dynamic"
+/>
+
+<FeatureCard
+  title="Approval Gates"
+  description="Human-in-the-loop gates that pause execution until approved."
+  guideLink="/guide/execution-strategies/approval-gates"
+  apiLink="/api/execution/gates"
+/>
+
+<FeatureCard
+  title="Resource Scheduling"
+  description="GPU, CPU, and memory-aware scheduling with blocking acquire/release."
+  guideLink="/guide/execution-strategies/resource-scheduling"
+  apiLink="/api/execution/resources"
+/>
+
+<FeatureCard
+  title="Distributed Execution"
+  description="Pluggable backends: threads, multiprocessing, Ray, Celery."
+  guideLink="/guide/execution-strategies/distributed"
+  apiLink="/api/execution/distributed"
+/>
+
+<FeatureCard
+  title="Tracing & Profiling"
+  description="Chrome-compatible execution traces and critical-path analysis."
+  guideLink="/guide/observability/tracing-profiling"
+  apiLink="/api/observability/tracing"
+/>
+
+<FeatureCard
+  title="Graph Analysis"
+  description="Explain nodes, what-if analysis, lineage tracking, linting, and query DSL."
+  guideLink="/guide/core-concepts/inspecting-graphs"
+  apiLink="/api/analysis/analysis"
+/>
+
+<FeatureCard
+  title="Contracts"
+  description="Type contracts across edges validated at build time."
+  guideLink="/guide/advanced/contracts"
+  apiLink="/api/analysis/contracts"
+/>
+
+<FeatureCard
+  title="Templates"
+  description="Parameterized DAG templates with placeholder expansion."
+  guideLink="/guide/advanced/templates"
+  apiLink="/api/utilities/template"
+/>
+
+<FeatureCard
+  title="Versioning"
+  description="Append-only mutation log with time-travel, diffing, and forking."
+  guideLink="/guide/advanced/versioning"
+  apiLink="/api/utilities/versioning"
+/>
+
+<FeatureCard
+  title="DataFrames"
+  description="Schema validation at edge boundaries for pandas/polars pipelines."
+  guideLink="/guide/advanced/dataframes"
+  apiLink="/api/analysis/dataframe"
+/>
+
+<FeatureCard
+  title="Plugins & Hooks"
+  description="Event-driven plugin system with hook registry and auto-discovery."
+  guideLink="/guide/advanced/plugins-hooks"
+  apiLink="/api/utilities/plugins"
+/>
+
+<FeatureCard
+  title="Visualization"
+  description="ASCII, SVG, Mermaid, and live web dashboard."
+  guideLink="/guide/observability/visualization"
+  apiLink="/api/utilities/display"
+/>
+
+</div>
+
+## Getting Started
+
+Install dagron from PyPI:
+
+```bash
+pip install dagron
+```
+
+Then head to the [Getting Started](/guide/getting-started) guide.
