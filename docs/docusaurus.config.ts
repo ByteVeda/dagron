@@ -80,6 +80,16 @@ const config: Config = {
           label: 'API Reference',
         },
         {
+          href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md',
+          label: 'Changelog',
+          position: 'right',
+        },
+        {
+          href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md',
+          label: 'Contributing',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/dagron/dagron',
           label: 'GitHub',
           position: 'right',
@@ -101,6 +111,8 @@ const config: Config = {
           items: [
             {label: 'GitHub', href: 'https://github.com/dagron/dagron'},
             {label: 'PyPI', href: 'https://pypi.org/project/dagron/'},
+            {label: 'Changelog', href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md'},
+            {label: 'Contributing', href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md'},
           ],
         },
       ],

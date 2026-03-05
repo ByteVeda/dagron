@@ -3,6 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   guideSidebar: [
     'intro',
+    'guide/why-dagron',
     {
       type: 'category',
       label: 'Guide',
@@ -10,6 +11,8 @@ const sidebars: SidebarsConfig = {
       link: {type: 'generated-index', title: 'User Guide', slug: '/guide'},
       items: [
         'guide/getting-started',
+        'guide/benchmarks',
+        'guide/cookbook',
         {
           type: 'category',
           label: 'Core Concepts',
@@ -59,6 +62,7 @@ const sidebars: SidebarsConfig = {
             'guide/advanced/plugins-hooks',
           ],
         },
+        'guide/architecture',
       ],
     },
   ],
