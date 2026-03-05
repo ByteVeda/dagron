@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import types
 import typing
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,8 +22,8 @@ class NodeContract:
         output: The declared output type of this node.
     """
 
-    inputs: dict[str, type] = field(default_factory=dict)
-    output: type = object
+    inputs: dict[str, Any] = field(default_factory=dict)
+    output: Any = object
 
 
 @dataclass(frozen=True)
@@ -80,8 +81,8 @@ class ContractValidator:
                             to_node=name,
                             message=(
                                 f"Type mismatch on edge {dep_name} -> {name}: "
-                                f"producer outputs {actual_type.__name__}, "
-                                f"but consumer expects {expected_type.__name__}"
+                                f"producer outputs {_type_name(actual_type)}, "
+                                f"but consumer expects {_type_name(expected_type)}"
                             ),
                         )
                     )
@@ -89,12 +90,61 @@ class ContractValidator:
         return violations
 
 
-def _is_compatible(actual: type, expected: type) -> bool:
-    """Check if *actual* is a subclass of *expected*.
+def _type_name(t: Any) -> str:
+    """Human-readable name for a type, including generic aliases."""
+    return getattr(t, "__name__", str(t))
 
-    Falls back to ``True`` if ``issubclass`` raises ``TypeError``
-    (e.g. for generic aliases).
+
+def _is_compatible(actual: Any, expected: Any) -> bool:
+    """Check if *actual* type is compatible with *expected* type.
+
+    Handles parameterized generics (e.g. list[int] vs list[str]),
+    Union/Optional, bare generics, and plain types.
     """
+    # object wildcard
+    if actual is object or expected is object:
+        return True
+
+    actual_origin = typing.get_origin(actual)
+    expected_origin = typing.get_origin(expected)
+    actual_args = typing.get_args(actual)
+    expected_args = typing.get_args(expected)
+
+    # Handle Union on expected side: actual must match at least one member
+    if expected_origin is Union or expected_origin is types.UnionType:
+        return any(_is_compatible(actual, member) for member in expected_args)
+
+    # Handle Union on actual side: all members must be compatible with expected
+    if actual_origin is Union or actual_origin is types.UnionType:
+        return all(_is_compatible(member, expected) for member in actual_args)
+
+    # Both are parameterized generics
+    if actual_origin is not None and expected_origin is not None:
+        # Check origins are compatible
+        if not _is_compatible_plain(actual_origin, expected_origin):
+            return False
+        # If both have args, check pairwise
+        if actual_args and expected_args:
+            if len(actual_args) != len(expected_args):
+                return False
+            return all(
+                _is_compatible(a, e) for a, e in zip(actual_args, expected_args, strict=True)
+            )
+        return True
+
+    # One bare generic, one parameterized: permissive (e.g. list vs list[int])
+    if (actual_origin is not None) != (expected_origin is not None):
+        # Get the plain type for each
+        a_plain = actual_origin if actual_origin is not None else actual
+        e_plain = expected_origin if expected_origin is not None else expected
+        return _is_compatible_plain(a_plain, e_plain)
+
+    # Plain types
+    return _is_compatible_plain(actual, expected)
+
+
+def _is_compatible_plain(actual: Any, expected: Any) -> bool:
+    """Plain issubclass check with TypeError guard."""
     try:
         return issubclass(actual, expected)
     except TypeError:

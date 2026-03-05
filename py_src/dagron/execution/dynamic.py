@@ -71,6 +71,7 @@ class DynamicExecutor:
         self._callbacks = callbacks or ExecutionCallbacks()
         self._fail_fast = fail_fast
         self._enable_tracing = enable_tracing
+        self._dynamic_origin: dict[str, str] = {}
 
     def execute(
         self,
@@ -91,18 +92,26 @@ class DynamicExecutor:
         """
         from dagron.execution.tracing import ExecutionTrace, TraceEventType
 
-        runtime_dag = self._dag.snapshot()
-        runtime_tasks = dict(tasks)
+        self._runtime_dag = self._dag.snapshot()
+        self._runtime_tasks = dict(tasks)
         trace = ExecutionTrace() if self._enable_tracing else None
-        result = ExecutionResult()
+        self._result = ExecutionResult()
         failed_nodes: set[str] = set()
-        completed_nodes: set[str] = set()
+        self._completed_nodes: set[str] = set()
         start_time = time.monotonic()
+        self._dynamic_origin.clear()
+
+        # Local aliases for readability
+        runtime_dag = self._runtime_dag
+        runtime_tasks = self._runtime_tasks
+        result = self._result
+        completed_nodes = self._completed_nodes
 
         if trace:
             trace.record(TraceEventType.EXECUTION_STARTED)
 
-        ancestors_cache: dict[str, set[str]] = {}
+        self._ancestors_cache: dict[str, set[str]] = {}
+        ancestors_cache = self._ancestors_cache
 
         def get_ancestors(name: str) -> set[str]:
             if name not in ancestors_cache:
@@ -173,10 +182,12 @@ class DynamicExecutor:
                     # Check expanders
                     expander = self._expanders.get(name)
                     if expander is not None:
+                        self._cleanup_orphans(name)
                         mod = expander(name, nr.result)
                         if mod is not None:
                             self._apply_modification(
-                                runtime_dag, runtime_tasks, mod, ancestors_cache
+                                runtime_dag, runtime_tasks, mod, ancestors_cache,
+                                parent_name=name,
                             )
                             if self._callbacks.on_dynamic_expand:
                                 self._callbacks.on_dynamic_expand(name, mod)
@@ -199,12 +210,44 @@ class DynamicExecutor:
         result.trace = trace
         return result
 
+    def _cleanup_orphans(self, parent_name: str) -> None:
+        """Remove all dynamic nodes previously spawned by parent_name, recursively."""
+        # Collect direct children of this parent
+        to_remove: list[str] = []
+        for node, origin in list(self._dynamic_origin.items()):
+            if origin == parent_name:
+                to_remove.append(node)
+
+        # Recursively collect transitive dynamic descendants
+        all_orphans: set[str] = set()
+        stack = list(to_remove)
+        while stack:
+            node = stack.pop()
+            if node in all_orphans:
+                continue
+            all_orphans.add(node)
+            # Find children spawned by this node
+            for child, origin in list(self._dynamic_origin.items()):
+                if origin == node and child not in all_orphans:
+                    stack.append(child)
+
+        # Remove orphans from runtime state
+        for node in all_orphans:
+            if self._runtime_dag.has_node(node):
+                self._runtime_dag.remove_node(node)
+            self._runtime_tasks.pop(node, None)
+            self._ancestors_cache.pop(node, None)
+            self._completed_nodes.discard(node)
+            self._result.node_results.pop(node, None)
+            del self._dynamic_origin[node]
+
     def _apply_modification(
         self,
         dag: DAG,
         tasks: dict[str, Callable[[], Any]],
         mod: DynamicModification,
         ancestors_cache: dict[str, set[str]],
+        parent_name: str = "",
     ) -> None:
         """Apply a dynamic modification to the runtime DAG."""
         # Remove nodes first
@@ -219,6 +262,8 @@ class DynamicExecutor:
             if not dag.has_node(spec.name):
                 dag.add_node(spec.name)
             tasks[spec.name] = spec.task
+            if parent_name:
+                self._dynamic_origin[spec.name] = parent_name
 
             # Add dependency edges (dep -> spec.name)
             for dep in spec.dependencies:

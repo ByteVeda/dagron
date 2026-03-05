@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import threading
 from enum import Enum
+from typing import Any
 
 
 class GateRejectedError(Exception):
@@ -145,6 +146,35 @@ class ApprovalGate:
         if self._status == GateStatus.REJECTED:
             raise GateRejectedError(gate_name="", reason=self._reason)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize gate state to a dictionary."""
+        with self._lock:
+            return {
+                "status": self._status.value,
+                "reason": self._reason,
+                "timeout": self.timeout,
+                "auto_approve": self._auto_approve,
+            }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ApprovalGate:
+        """Reconstruct a gate from serialized data.
+
+        WAITING/PENDING/TIMED_OUT restore as PENDING (need re-approval).
+        APPROVED/REJECTED restore as-is.
+        """
+        gate = cls(timeout=data.get("timeout"), auto_approve=False)
+        status = GateStatus(data["status"])
+        if status in (GateStatus.APPROVED, GateStatus.REJECTED):
+            gate._status = status
+            gate._reason = data.get("reason", "")
+            if status in (GateStatus.APPROVED, GateStatus.REJECTED):
+                gate._sync_event.set()
+        else:
+            # WAITING, PENDING, TIMED_OUT all reset to PENDING
+            gate._status = GateStatus.PENDING
+        return gate
+
     def reset(self) -> None:
         """Reset the gate to PENDING state for reuse."""
         with self._lock:
@@ -253,6 +283,17 @@ class GateController:
             raise GateRejectedError(name, gate.reason) from None
         except GateTimeoutError:
             raise GateTimeoutError(name, gate.timeout or 0.0) from None
+
+    def to_dict(self) -> dict[str, dict[str, Any]]:
+        """Serialize all gate states to a dictionary."""
+        with self._lock:
+            return {name: gate.to_dict() for name, gate in self._gates.items()}
+
+    def restore_from_dict(self, data: dict[str, dict[str, Any]]) -> None:
+        """Restore gate states from serialized data."""
+        with self._lock:
+            for name, gate_data in data.items():
+                self._gates[name] = ApprovalGate.from_dict(gate_data)
 
     def reset_all(self) -> None:
         """Reset all gates to PENDING state."""

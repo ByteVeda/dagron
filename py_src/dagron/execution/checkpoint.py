@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from dagron._internal import DAG
     from dagron.execution._types import ExecutionCallbacks, ExecutionResult
+    from dagron.execution.gates import GateController
 
 
 @dataclass(frozen=True)
@@ -56,11 +57,13 @@ class CheckpointExecutor:
         callbacks: ExecutionCallbacks | None = None,
         fail_fast: bool = True,
         enable_tracing: bool = False,
+        gate_controller: GateController | None = None,
     ) -> None:
         self._dag = dag
         self._checkpoint_dir = Path(checkpoint_dir)
         self._fail_fast = fail_fast
         self._enable_tracing = enable_tracing
+        self._gate_controller = gate_controller
 
         from dagron.execution._types import ExecutionCallbacks
 
@@ -95,12 +98,14 @@ class CheckpointExecutor:
             return result
 
     def _save_meta(self, completed: list[str], failed: list[str]) -> None:
-        meta = {
+        meta: dict[str, Any] = {
             "completed": completed,
             "failed": failed,
             "timestamp": time.time(),
             "node_count": self._dag.node_count(),
         }
+        if self._gate_controller is not None:
+            meta["gates"] = self._gate_controller.to_dict()
         with open(self._meta_path(), "w") as f:
             json.dump(meta, f)
 
@@ -167,6 +172,9 @@ class CheckpointExecutor:
         """
         meta = self._load_meta()
         completed = set(meta["completed"]) if meta else set()
+        # Restore gate states if available
+        if meta and "gates" in meta and self._gate_controller is not None:
+            self._gate_controller.restore_from_dict(meta["gates"])
         return self._run(tasks, resume_from=completed)
 
     def _run(
