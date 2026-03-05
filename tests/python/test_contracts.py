@@ -247,3 +247,118 @@ class TestDAGBuilderContracts:
         assert len(violations) == 1
         assert violations[0].from_node == "a"
         assert violations[0].to_node == "b"
+
+
+class TestGenericTypeValidation:
+    def test_list_int_vs_list_str_violation(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=list[int]),
+            "b": NodeContract(inputs={"a": list[str]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert len(violations) == 1
+
+    def test_list_int_vs_list_int_passes(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=list[int]),
+            "b": NodeContract(inputs={"a": list[int]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert violations == []
+
+    def test_dict_str_int_vs_dict_str_str_violation(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=dict[str, int]),
+            "b": NodeContract(inputs={"a": dict[str, str]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert len(violations) == 1
+
+    def test_optional_str_accepts_str(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=str),
+            "b": NodeContract(inputs={"a": str | None}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert violations == []
+
+    def test_optional_str_rejects_int(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=int),
+            "b": NodeContract(inputs={"a": str | None}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert len(violations) == 1
+
+    def test_union_int_str_accepts_int(self):
+        from typing import Union
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=int),
+            "b": NodeContract(inputs={"a": Union[int, str]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert violations == []
+
+    def test_union_int_str_rejects_float(self):
+        from typing import Union
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=float),
+            "b": NodeContract(inputs={"a": Union[int, str]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert len(violations) == 1
+
+    def test_bare_list_vs_list_int_passes(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=list),
+            "b": NodeContract(inputs={"a": list[int]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert violations == []
+
+    def test_nested_generics_violation(self):
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=list[dict[str, int]]),
+            "b": NodeContract(inputs={"a": list[dict[str, str]]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert len(violations) == 1
+
+    def test_list_bool_vs_list_int_passes(self):
+        """bool is a subclass of int, so list[bool] should be compatible with list[int]."""
+        dag = DAG()
+        dag.add_nodes(["a", "b"])
+        dag.add_edge("a", "b")
+        contracts = {
+            "a": NodeContract(output=list[bool]),
+            "b": NodeContract(inputs={"a": list[int]}, output=object),
+        }
+        violations = ContractValidator(dag, contracts).validate()
+        assert violations == []
