@@ -11,6 +11,10 @@ import FeatureCard from '@site/src/components/FeatureCard';
 
 **High-performance DAG execution engine for Python, powered by Rust.**
 
+**Up to 12x faster than NetworkX** on 10K-node DAG validation, with sub-microsecond reachability queries after index build. [See benchmarks](/guide/benchmarks).
+
+**For engineers embedding task graphs in applications** — build systems, data pipelines, spreadsheet engines, CI/CD schedulers. [Why dagron?](/guide/why-dagron)
+
 dagron lets you define directed acyclic graphs of tasks and execute them with maximum parallelism, rich observability, and dozens of execution strategies — from simple thread pools to distributed clusters.
 
 The core graph data structure lives in Rust (via PyO3) for zero-copy speed, while the Python layer provides an ergonomic API for building, executing, analyzing, and visualizing your DAGs.
@@ -175,4 +179,10 @@ Install dagron from PyPI:
 pip install dagron
 ```
 
+**Requirements:** Python 3.12+ · Linux (x86_64, aarch64) · macOS (x86_64, Apple Silicon) · Windows (x86_64)
+
 Then head to the [Getting Started](/guide/getting-started) guide.
+
+---
+
+**[Benchmarks](/guide/benchmarks)** | **[Why dagron?](/guide/why-dagron)** | **[Cookbook](/guide/cookbook)** | **[Architecture](/guide/architecture)** | **[Changelog](https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md)**
