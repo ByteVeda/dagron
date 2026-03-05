@@ -230,3 +230,148 @@ class TestDynamicExecutor:
         result = executor.execute({"a": lambda: 42})
         assert result.trace is not None
         assert len(result.trace.events) > 0
+
+
+class TestDynamicOrphanGC:
+    def test_re_expansion_cleans_orphans(self):
+        """Re-running an expander cleans up nodes from the previous expansion."""
+        dag = DAG()
+        dag.add_node("parent")
+        dag.add_node("sink")
+        dag.add_edge("parent", "sink")
+
+        call_count = [0]
+
+        def expander(name, result):
+            call_count[0] += 1
+            suffix = call_count[0]
+            return DynamicModification(
+                add_nodes=[
+                    DynamicNodeSpec(
+                        name=f"child_{suffix}",
+                        task=lambda s=suffix: f"v{s}",  # type: ignore[misc]
+                        dependencies=["parent"],
+                        dependents=["sink"],
+                    ),
+                ]
+            )
+
+        executor = DynamicExecutor(dag, expanders={"parent": expander})
+
+        # First execution
+        result1 = executor.execute({"parent": lambda: "run1", "sink": lambda: "done"})
+        assert "child_1" in result1.node_results
+
+        # Second execution — child_1 should be cleaned, child_2 should appear
+        result2 = executor.execute({"parent": lambda: "run2", "sink": lambda: "done"})
+        assert "child_2" in result2.node_results
+        assert "child_1" not in result2.node_results
+
+    def test_static_nodes_unaffected_by_orphan_gc(self):
+        """Static nodes should never be removed by orphan GC."""
+        dag = DAG()
+        dag.add_node("parent")
+        dag.add_node("static_sibling")
+        dag.add_edge("parent", "static_sibling")
+
+        def expander(name, result):
+            return DynamicModification(
+                add_nodes=[
+                    DynamicNodeSpec(
+                        name="dynamic",
+                        task=lambda: "d",
+                        dependencies=["parent"],
+                    )
+                ]
+            )
+
+        executor = DynamicExecutor(dag, expanders={"parent": expander})
+        result = executor.execute({
+            "parent": lambda: "p",
+            "static_sibling": lambda: "s",
+        })
+        assert "static_sibling" in result.node_results
+        assert result.node_results["static_sibling"].status == NodeStatus.COMPLETED
+
+    def test_chained_expanders_transitive_orphan_cleanup(self):
+        """A→B→C: re-running A should clean both B and C."""
+        dag = DAG()
+        dag.add_node("A")
+
+        call_count = [0]
+
+        def a_expander(name, result):
+            call_count[0] += 1
+            suffix = call_count[0]
+            return DynamicModification(
+                add_nodes=[
+                    DynamicNodeSpec(
+                        name=f"B_{suffix}",
+                        task=lambda s=suffix: f"b{s}",  # type: ignore[misc]
+                        dependencies=["A"],
+                    )
+                ]
+            )
+
+        def b_expander(name, result):
+            suffix = name.split("_")[1]
+            return DynamicModification(
+                add_nodes=[
+                    DynamicNodeSpec(
+                        name=f"C_{suffix}",
+                        task=lambda s=suffix: f"c{s}",  # type: ignore[misc]
+                        dependencies=[name],
+                    )
+                ]
+            )
+
+        executor = DynamicExecutor(
+            dag,
+            expanders={
+                "A": a_expander,
+                "B_1": b_expander,
+                "B_2": b_expander,
+            },
+        )
+
+        # First run: A → B_1 → C_1
+        result1 = executor.execute({"A": lambda: "a1"})
+        assert "B_1" in result1.node_results
+        assert "C_1" in result1.node_results
+
+        # Second run: A cleans B_1 and C_1, spawns B_2 → C_2
+        result2 = executor.execute({"A": lambda: "a2"})
+        assert "B_2" in result2.node_results
+        assert "C_2" in result2.node_results
+        assert "B_1" not in result2.node_results
+        assert "C_1" not in result2.node_results
+
+    def test_expander_returning_none_still_cleans_orphans(self):
+        """Even if expander returns None on re-run, previous orphans should be cleaned."""
+        dag = DAG()
+        dag.add_node("parent")
+
+        call_count = [0]
+
+        def expander(name, result):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return DynamicModification(
+                    add_nodes=[
+                        DynamicNodeSpec(
+                            name="child",
+                            task=lambda: "c",
+                            dependencies=["parent"],
+                        )
+                    ]
+                )
+            return None
+
+        executor = DynamicExecutor(dag, expanders={"parent": expander})
+
+        result1 = executor.execute({"parent": lambda: "run1"})
+        assert "child" in result1.node_results
+
+        # Second run: expander returns None but child should still be cleaned
+        result2 = executor.execute({"parent": lambda: "run2"})
+        assert "child" not in result2.node_results
