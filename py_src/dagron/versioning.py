@@ -55,12 +55,15 @@ class VersionedDAG:
         dag: Optional existing DAG to wrap. If None, starts empty.
     """
 
-    def __init__(self, dag: DAG | None = None) -> None:
+    def __init__(self, dag: DAG | None = None, compact_threshold: int | None = None) -> None:
         from dagron._internal import DAG as DagClass
 
         self._dag = dag if dag is not None else DagClass()
         self._log: list[Mutation] = []
         self._version = 0
+        self._snapshots: dict[int, DAG] = {}
+        self._base_version: int = 0
+        self.compact_threshold = compact_threshold
 
     @property
     def dag(self) -> DAG:
@@ -82,6 +85,8 @@ class VersionedDAG:
                 timestamp=time.time(),
             )
         )
+        if self.compact_threshold is not None and len(self._log) >= self.compact_threshold:
+            self.compact()
 
     def add_node(
         self,
@@ -140,22 +145,72 @@ class VersionedDAG:
             A new DAG representing the state at that version.
 
         Raises:
-            ValueError: If version is out of range.
+            ValueError: If version is out of range or before compaction point
+                with no covering snapshot.
         """
         if version < 0 or version > self._version:
             raise ValueError(
                 f"Version {version} out of range [0, {self._version}]."
             )
+        # Check if version is before base and no snapshot covers it
+        if version < self._base_version and version not in self._snapshots:
+            # Check if any snapshot <= version exists
+            covering = [v for v in self._snapshots if v <= version]
+            if not covering and version > 0:
+                raise ValueError(
+                    f"Version {version} is before compaction point {self._base_version} "
+                    f"and no snapshot covers it."
+                )
         return self._replay(version)
 
     def _replay(self, up_to_version: int) -> DAG:
-        """Replay mutations up to a given version."""
+        """Replay mutations up to a given version, using snapshots when available."""
+        return self._replay_from_nearest(up_to_version)
+
+    def _replay_from_nearest(self, up_to_version: int) -> DAG:
+        """Find the nearest snapshot <= up_to_version and replay from there."""
         from dagron._internal import DAG as DagClass
 
-        dag = DagClass()
-        for mutation in self._log[:up_to_version]:
+        # Find the best snapshot to start from
+        best_snap_version = None
+        for snap_v in self._snapshots:
+            if snap_v <= up_to_version and (best_snap_version is None or snap_v > best_snap_version):
+                best_snap_version = snap_v
+
+        if best_snap_version is not None:
+            dag = self._snapshots[best_snap_version].snapshot()
+            start_version = best_snap_version
+        else:
+            dag = DagClass()
+            start_version = 0
+
+        # Replay mutations from start_version to up_to_version
+        for mutation in self._log:
+            if mutation.version <= start_version:
+                continue
+            if mutation.version > up_to_version:
+                break
             _apply_mutation(dag, mutation)
         return dag
+
+    def compact(self, at_version: int | None = None) -> None:
+        """Compact the mutation log by snapshotting at the target version.
+
+        Args:
+            at_version: Version to compact at. None means current version.
+        """
+        if at_version is None:
+            at_version = self._version
+        if at_version < 0 or at_version > self._version:
+            raise ValueError(f"Version {at_version} out of range [0, {self._version}].")
+
+        # Replay to target version and store snapshot
+        snapshot = self._replay_from_nearest(at_version)
+        self._snapshots[at_version] = snapshot
+
+        # Truncate log: only keep mutations after at_version
+        self._log = [m for m in self._log if m.version > at_version]
+        self._base_version = at_version
 
     def diff_versions(self, version_a: int, version_b: int) -> GraphDiff:
         """Diff two versions of the DAG.
@@ -203,9 +258,14 @@ class VersionedDAG:
             at_version = self._version
         dag = self.at_version(at_version)
         forked = VersionedDAG(dag)
-        # Copy history up to fork point
-        forked._log = list(self._log[:at_version])
+        # Copy log entries up to fork point (only those still in our log)
+        forked._log = [m for m in self._log if m.version <= at_version]
         forked._version = at_version
+        # Copy relevant snapshots (<= fork version)
+        forked._snapshots = {
+            v: s.snapshot() for v, s in self._snapshots.items() if v <= at_version
+        }
+        forked._base_version = min(self._base_version, at_version)
         return forked
 
 
