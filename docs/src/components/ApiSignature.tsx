@@ -1,4 +1,3 @@
-import React from 'react';
 import CodeBlock from '@theme/CodeBlock';
 
 interface ApiSignatureProps {
@@ -7,7 +6,11 @@ interface ApiSignatureProps {
   language?: string;
 }
 
-export default function ApiSignature({name, signature, language = 'python'}: ApiSignatureProps) {
+export default function ApiSignature({
+  name,
+  signature,
+  language = 'python',
+}: ApiSignatureProps) {
   const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return (
     <div className="api-signature" id={id}>

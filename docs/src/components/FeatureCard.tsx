@@ -1,4 +1,3 @@
-import React from 'react';
 import Link from '@docusaurus/Link';
 
 interface FeatureCardProps {
@@ -9,11 +8,17 @@ interface FeatureCardProps {
   icon?: string;
 }
 
-export default function FeatureCard({title, description, guideLink, apiLink, icon}: FeatureCardProps) {
+export default function FeatureCard({
+  title,
+  description,
+  guideLink,
+  apiLink,
+  icon,
+}: FeatureCardProps) {
   return (
     <div className="feature-card">
       <div className="feature-card__title">
-        {icon && <span style={{marginRight: '0.5rem'}}>{icon}</span>}
+        {icon && <span style={{ marginRight: '0.5rem' }}>{icon}</span>}
         {title}
       </div>
       <div className="feature-card__description">{description}</div>

@@ -1,6 +1,6 @@
-import React, {useMemo} from 'react';
+import { useColorMode } from '@docusaurus/theme-common';
 import Mermaid from '@theme/Mermaid';
-import {useColorMode} from '@docusaurus/theme-common';
+import { useMemo } from 'react';
 
 /**
  * Maps light-mode hex colors (used in classDef/style directives) to dark-mode equivalents.
@@ -67,18 +67,15 @@ const DARK_COLOR_MAP: Record<string, string> = {
   '#94a3b8': '#b0bec5',
 };
 
-const COLOR_PATTERN = new RegExp(
-  Object.keys(DARK_COLOR_MAP).join('|'),
-  'gi',
-);
+const COLOR_PATTERN = new RegExp(Object.keys(DARK_COLOR_MAP).join('|'), 'gi');
 
 interface DagDiagramProps {
   chart: string;
   caption?: string;
 }
 
-export default function DagDiagram({chart, caption}: DagDiagramProps) {
-  const {colorMode} = useColorMode();
+export default function DagDiagram({ chart, caption }: DagDiagramProps) {
+  const { colorMode } = useColorMode();
 
   const value = useMemo(() => {
     if (colorMode !== 'dark') return chart;
@@ -91,7 +88,17 @@ export default function DagDiagram({chart, caption}: DagDiagramProps) {
   return (
     <div className="dag-diagram">
       <Mermaid value={value} />
-      {caption && <p style={{fontSize: '0.85rem', color: 'var(--ifm-font-color-secondary)', marginTop: '0.5rem'}}>{caption}</p>}
+      {caption && (
+        <p
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--ifm-font-color-secondary)',
+            marginTop: '0.5rem',
+          }}
+        >
+          {caption}
+        </p>
+      )}
     </div>
   );
 }

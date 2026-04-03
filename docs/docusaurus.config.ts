@@ -1,7 +1,6 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-import type {Plugin} from '@docusaurus/types';
+import type { Config, Plugin } from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
 
 const config: Config = {
   title: 'dagron',
@@ -36,9 +35,7 @@ const config: Config = {
         name: 'ignore-vscode-languageserver-warning',
         configureWebpack() {
           return {
-            ignoreWarnings: [
-              {module: /vscode-languageserver-types/},
-            ],
+            ignoreWarnings: [{ module: /vscode-languageserver-types/ }],
           };
         },
       };
@@ -102,17 +99,23 @@ const config: Config = {
         {
           title: 'Documentation',
           items: [
-            {label: 'Guide', to: '/guide/getting-started'},
-            {label: 'API Reference', to: '/api/core/core'},
+            { label: 'Guide', to: '/guide/getting-started' },
+            { label: 'API Reference', to: '/api/core/core' },
           ],
         },
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/ByteVeda/dagron'},
-            {label: 'PyPI', href: 'https://pypi.org/project/dagron/'},
-            {label: 'Changelog', href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md'},
-            {label: 'Contributing', href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md'},
+            { label: 'GitHub', href: 'https://github.com/ByteVeda/dagron' },
+            { label: 'PyPI', href: 'https://pypi.org/project/dagron/' },
+            {
+              label: 'Changelog',
+              href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md',
+            },
+            {
+              label: 'Contributing',
+              href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md',
+            },
           ],
         },
       ],
@@ -121,10 +124,17 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['python', 'rust', 'typescript', 'bash', 'json', 'toml'],
+      additionalLanguages: [
+        'python',
+        'rust',
+        'typescript',
+        'bash',
+        'json',
+        'toml',
+      ],
     },
     mermaid: {
-      theme: {light: 'default', dark: 'dark'},
+      theme: { light: 'default', dark: 'dark' },
       options: {},
     },
     colorMode: {
