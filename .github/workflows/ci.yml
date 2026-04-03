@@ -31,17 +31,8 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Ruff check
-        run: uv run ruff check .
-
-      - name: Ruff format check
-        run: uv run ruff format --check .
-
-      - name: Mypy
-        run: uv run mypy
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
 
   rust-test:
     runs-on: ubuntu-latest
