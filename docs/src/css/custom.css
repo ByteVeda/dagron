@@ -19,7 +19,7 @@
   --dagron-status-cache-hit: #38b2ac;
 }
 
-[data-theme='dark'] {
+[data-theme="dark"] {
   --ifm-color-primary: #a29bfe;
   --ifm-color-primary-dark: #8b82fe;
   --ifm-color-primary-darker: #7d73fd;
@@ -88,30 +88,47 @@
   color: #fff;
 }
 
-.status-badge--pending { background: var(--dagron-status-pending); }
-.status-badge--running { background: var(--dagron-status-running); }
-.status-badge--completed { background: var(--dagron-status-completed); }
-.status-badge--failed { background: var(--dagron-status-failed); }
-.status-badge--skipped { background: var(--dagron-status-skipped); }
-.status-badge--timed-out { background: var(--dagron-status-timed-out); }
-.status-badge--cancelled { background: var(--dagron-status-cancelled); }
-.status-badge--cache-hit { background: var(--dagron-status-cache-hit); }
+.status-badge--pending {
+  background: var(--dagron-status-pending);
+}
+.status-badge--running {
+  background: var(--dagron-status-running);
+}
+.status-badge--completed {
+  background: var(--dagron-status-completed);
+}
+.status-badge--failed {
+  background: var(--dagron-status-failed);
+}
+.status-badge--skipped {
+  background: var(--dagron-status-skipped);
+}
+.status-badge--timed-out {
+  background: var(--dagron-status-timed-out);
+}
+.status-badge--cancelled {
+  background: var(--dagron-status-cancelled);
+}
+.status-badge--cache-hit {
+  background: var(--dagron-status-cache-hit);
+}
 
 .dag-diagram {
   margin: 1.5rem 0;
 }
 
-[data-theme='dark'] .dag-diagram .docusaurus-mermaid-container svg .nodeLabel {
-  color: #e0e0e0 !important;
-  fill: #e0e0e0 !important;
+[data-theme="dark"] .dag-diagram .docusaurus-mermaid-container svg .nodeLabel {
+  color: #e0e0e0;
+  fill: #e0e0e0;
 }
-
 
 .feature-card {
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: var(--ifm-global-radius);
   padding: 1.25rem;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  transition:
+    box-shadow 0.2s,
+    border-color 0.2s;
 }
 
 .feature-card:hover {

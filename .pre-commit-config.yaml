@@ -29,3 +29,9 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
+      - id: biome
+        name: biome
+        entry: bash -c 'cd docs && npx biome ci src/ docusaurus.config.ts sidebars.ts'
+        language: system
+        files: ^docs/src/|^docs/docusaurus\.config\.ts|^docs/sidebars\.ts
+        pass_filenames: false

@@ -1,4 +1,4 @@
-import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   guideSidebar: [
@@ -8,7 +8,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Guide',
       collapsed: false,
-      link: {type: 'generated-index', title: 'User Guide', slug: '/guide'},
+      link: { type: 'generated-index', title: 'User Guide', slug: '/guide' },
       items: [
         'guide/getting-started',
         'guide/benchmarks',
@@ -71,17 +71,13 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'API Reference',
       collapsed: false,
-      link: {type: 'generated-index', title: 'API Reference', slug: '/api'},
+      link: { type: 'generated-index', title: 'API Reference', slug: '/api' },
       items: [
         {
           type: 'category',
           label: 'Core',
           collapsed: false,
-          items: [
-            'api/core/core',
-            'api/core/builder',
-            'api/core/errors',
-          ],
+          items: ['api/core/core', 'api/core/builder', 'api/core/errors'],
         },
         {
           type: 'category',
@@ -105,10 +101,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Observability',
           collapsed: true,
-          items: [
-            'api/observability/tracing',
-            'api/observability/profiling',
-          ],
+          items: ['api/observability/tracing', 'api/observability/profiling'],
         },
         {
           type: 'category',

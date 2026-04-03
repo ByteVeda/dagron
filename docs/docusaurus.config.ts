@@ -1,17 +1,16 @@
-import {themes as prismThemes} from 'prism-react-renderer';
-import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-import type {Plugin} from '@docusaurus/types';
+import type { Config, Plugin } from '@docusaurus/types';
+import { themes as prismThemes } from 'prism-react-renderer';
 
 const config: Config = {
   title: 'dagron',
   tagline: 'High-performance DAG execution engine for Python, powered by Rust',
   favicon: 'img/favicon.ico',
 
-  url: 'https://dagron.dev',
-  baseUrl: '/',
+  url: 'https://byteveda.github.io',
+  baseUrl: '/dagron/',
 
-  organizationName: 'dagron',
+  organizationName: 'ByteVeda',
   projectName: 'dagron',
 
   onBrokenLinks: 'throw',
@@ -36,9 +35,7 @@ const config: Config = {
         name: 'ignore-vscode-languageserver-warning',
         configureWebpack() {
           return {
-            ignoreWarnings: [
-              {module: /vscode-languageserver-types/},
-            ],
+            ignoreWarnings: [{ module: /vscode-languageserver-types/ }],
           };
         },
       };
@@ -80,17 +77,17 @@ const config: Config = {
           label: 'API Reference',
         },
         {
-          href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md',
+          href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md',
           label: 'Changelog',
           position: 'right',
         },
         {
-          href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md',
+          href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md',
           label: 'Contributing',
           position: 'right',
         },
         {
-          href: 'https://github.com/dagron/dagron',
+          href: 'https://github.com/ByteVeda/dagron',
           label: 'GitHub',
           position: 'right',
         },
@@ -102,17 +99,23 @@ const config: Config = {
         {
           title: 'Documentation',
           items: [
-            {label: 'Guide', to: '/guide/getting-started'},
-            {label: 'API Reference', to: '/api/core/core'},
+            { label: 'Guide', to: '/guide/getting-started' },
+            { label: 'API Reference', to: '/api/core/core' },
           ],
         },
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/dagron/dagron'},
-            {label: 'PyPI', href: 'https://pypi.org/project/dagron/'},
-            {label: 'Changelog', href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md'},
-            {label: 'Contributing', href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md'},
+            { label: 'GitHub', href: 'https://github.com/ByteVeda/dagron' },
+            { label: 'PyPI', href: 'https://pypi.org/project/dagron/' },
+            {
+              label: 'Changelog',
+              href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md',
+            },
+            {
+              label: 'Contributing',
+              href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md',
+            },
           ],
         },
       ],
@@ -121,10 +124,17 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['python', 'rust', 'typescript', 'bash', 'json', 'toml'],
+      additionalLanguages: [
+        'python',
+        'rust',
+        'typescript',
+        'bash',
+        'json',
+        'toml',
+      ],
     },
     mermaid: {
-      theme: {light: 'default', dark: 'dark'},
+      theme: { light: 'default', dark: 'dark' },
       options: {},
     },
     colorMode: {
