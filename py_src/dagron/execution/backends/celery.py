@@ -22,8 +22,7 @@ class CeleryBackend:
             import celery
         except ImportError:
             raise ImportError(
-                "Celery is required for CeleryBackend. "
-                "Install with: pip install dagron[celery]"
+                "Celery is required for CeleryBackend. Install with: pip install dagron[celery]"
             ) from None
 
         self._celery = celery

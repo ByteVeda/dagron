@@ -10,10 +10,8 @@ class TestConditionalDAGBuilder:
             .add_node("validate")
             .add_node("process")
             .add_node("error_handler")
-            .add_edge("validate", "process",
-                       condition=lambda r: r.get("valid", False))
-            .add_edge("validate", "error_handler",
-                       condition=lambda r: not r.get("valid", False))
+            .add_edge("validate", "process", condition=lambda r: r.get("valid", False))
+            .add_edge("validate", "error_handler", condition=lambda r: not r.get("valid", False))
             .build()
         )
         assert dag.node_count() == 3
@@ -22,11 +20,7 @@ class TestConditionalDAGBuilder:
 
     def test_unconditional_edges(self):
         _dag, conditions = (
-            ConditionalDAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
+            ConditionalDAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         )
         assert len(conditions) == 0
 
@@ -38,10 +32,8 @@ class TestConditionalExecutor:
             .add_node("validate")
             .add_node("process")
             .add_node("error_handler")
-            .add_edge("validate", "process",
-                       condition=lambda r: r.get("valid", False))
-            .add_edge("validate", "error_handler",
-                       condition=lambda r: not r.get("valid", False))
+            .add_edge("validate", "process", condition=lambda r: r.get("valid", False))
+            .add_edge("validate", "error_handler", condition=lambda r: not r.get("valid", False))
             .build()
         )
 
@@ -64,10 +56,8 @@ class TestConditionalExecutor:
             .add_node("validate")
             .add_node("process")
             .add_node("error_handler")
-            .add_edge("validate", "process",
-                       condition=lambda r: r.get("valid", False))
-            .add_edge("validate", "error_handler",
-                       condition=lambda r: not r.get("valid", False))
+            .add_edge("validate", "process", condition=lambda r: r.get("valid", False))
+            .add_edge("validate", "error_handler", condition=lambda r: not r.get("valid", False))
             .build()
         )
 
@@ -108,11 +98,7 @@ class TestConditionalExecutor:
 
     def test_fail_fast(self):
         dag, conditions = (
-            ConditionalDAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
+            ConditionalDAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         )
 
         def fail():
@@ -152,11 +138,7 @@ class TestConditionalExecutor:
 
     def test_with_tracing(self):
         dag, conditions = (
-            ConditionalDAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
+            ConditionalDAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         )
 
         tasks = {"a": lambda: "a", "b": lambda: "b"}

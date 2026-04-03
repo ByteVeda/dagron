@@ -307,6 +307,7 @@ class TestGenericTypeValidation:
 
     def test_union_int_str_accepts_int(self):
         from typing import Union
+
         dag = DAG()
         dag.add_nodes(["a", "b"])
         dag.add_edge("a", "b")
@@ -319,6 +320,7 @@ class TestGenericTypeValidation:
 
     def test_union_int_str_rejects_float(self):
         from typing import Union
+
         dag = DAG()
         dag.add_nodes(["a", "b"])
         dag.add_edge("a", "b")

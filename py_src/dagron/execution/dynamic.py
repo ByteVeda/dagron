@@ -138,11 +138,7 @@ class DynamicExecutor:
 
             for name in ready:
                 # Skip if a dependency has failed
-                if (
-                    self._fail_fast
-                    and failed_nodes
-                    and get_ancestors(name) & failed_nodes
-                ):
+                if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
                     nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
                     result.node_results[name] = nr
                     result.skipped += 1
@@ -186,7 +182,10 @@ class DynamicExecutor:
                         mod = expander(name, nr.result)
                         if mod is not None:
                             self._apply_modification(
-                                runtime_dag, runtime_tasks, mod, ancestors_cache,
+                                runtime_dag,
+                                runtime_tasks,
+                                mod,
+                                ancestors_cache,
                                 parent_name=name,
                             )
                             if self._callbacks.on_dynamic_expand:

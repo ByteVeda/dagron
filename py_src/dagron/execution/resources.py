@@ -83,13 +83,15 @@ class ResourceTimeline:
     ) -> None:
         if self._start_time is None:
             self._start_time = time.monotonic()
-        self._snapshots.append(ResourceSnapshot(
-            timestamp=time.monotonic() - self._start_time,
-            allocated=dict(allocated),
-            available=dict(available),
-            node_name=node_name,
-            event=event,
-        ))
+        self._snapshots.append(
+            ResourceSnapshot(
+                timestamp=time.monotonic() - self._start_time,
+                allocated=dict(allocated),
+                available=dict(available),
+                node_name=node_name,
+                event=event,
+            )
+        )
 
     @property
     def snapshots(self) -> list[ResourceSnapshot]:
@@ -143,7 +145,9 @@ class ResourcePool:
                 return False
         return True
 
-    def try_acquire(self, requirements: ResourceRequirements, node_name: str | None = None) -> bool:
+    def try_acquire(
+        self, requirements: ResourceRequirements, node_name: str | None = None
+    ) -> bool:
         """Try to acquire resources without blocking. Returns True if acquired."""
         with self._condition:
             if requirements.fits(self._available):
@@ -151,14 +155,19 @@ class ResourcePool:
                     self._available[resource] -= needed
                     self._allocated[resource] += needed
                 self._timeline.record(
-                    self._allocated, self._available,
-                    node_name=node_name, event="acquired",
+                    self._allocated,
+                    self._available,
+                    node_name=node_name,
+                    event="acquired",
                 )
                 return True
             return False
 
     def acquire(
-        self, requirements: ResourceRequirements, node_name: str | None = None, timeout: float | None = None
+        self,
+        requirements: ResourceRequirements,
+        node_name: str | None = None,
+        timeout: float | None = None,
     ) -> bool:
         """Acquire resources, blocking until available. Returns True if acquired."""
         with self._condition:
@@ -175,8 +184,10 @@ class ResourcePool:
                 self._available[resource] -= needed
                 self._allocated[resource] += needed
             self._timeline.record(
-                self._allocated, self._available,
-                node_name=node_name, event="acquired",
+                self._allocated,
+                self._available,
+                node_name=node_name,
+                event="acquired",
             )
             return True
 
@@ -189,11 +200,14 @@ class ResourcePool:
                     self._capacities.get(resource, needed),
                 )
                 self._allocated[resource] = max(
-                    self._allocated.get(resource, 0) - needed, 0,
+                    self._allocated.get(resource, 0) - needed,
+                    0,
                 )
             self._timeline.record(
-                self._allocated, self._available,
-                node_name=node_name, event="released",
+                self._allocated,
+                self._available,
+                node_name=node_name,
+                event="released",
             )
             self._condition.notify_all()
 
@@ -306,16 +320,16 @@ class ResourceAwareExecutor:
                         continue
 
                     # Skip if ancestor failed
-                    if (
-                        self._fail_fast
-                        and failed_nodes
-                        and get_ancestors(name) & failed_nodes
-                    ):
+                    if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
                         _record_skip(name, result, self._callbacks, trace)
                         completed_nodes.add(name)
                         self._update_successors(
-                            name, in_degree, successors, bottom_levels,
-                            still_ready, completed_nodes,
+                            name,
+                            in_degree,
+                            successors,
+                            bottom_levels,
+                            still_ready,
+                            completed_nodes,
                         )
                         continue
 
@@ -324,8 +338,12 @@ class ResourceAwareExecutor:
                         _record_skip(name, result, self._callbacks, trace)
                         completed_nodes.add(name)
                         self._update_successors(
-                            name, in_degree, successors, bottom_levels,
-                            still_ready, completed_nodes,
+                            name,
+                            in_degree,
+                            successors,
+                            bottom_levels,
+                            still_ready,
+                            completed_nodes,
                         )
                         continue
 
@@ -402,8 +420,12 @@ class ResourceAwareExecutor:
 
                     # Update successors
                     self._update_successors(
-                        name, in_degree, successors, bottom_levels,
-                        ready, completed_nodes,
+                        name,
+                        in_degree,
+                        successors,
+                        bottom_levels,
+                        ready,
+                        completed_nodes,
                     )
 
         if trace:
@@ -510,11 +532,7 @@ class AsyncResourceAwareExecutor:
                 if name in completed_nodes or name in result.node_results:
                     continue
 
-                if (
-                    self._fail_fast
-                    and failed_nodes
-                    and get_ancestors(name) & failed_nodes
-                ):
+                if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
                     nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
                     result.node_results[name] = nr
                     result.skipped += 1
@@ -542,9 +560,7 @@ class AsyncResourceAwareExecutor:
                     if trace:
                         trace.record(TraceEventType.NODE_STARTED, node_name=name)
 
-                    async_task = asyncio.create_task(
-                        self._run_task(name, task_fn)
-                    )
+                    async_task = asyncio.create_task(self._run_task(name, task_fn))
                     active_tasks[async_task] = (name, req)
                 else:
                     still_ready.append(name)

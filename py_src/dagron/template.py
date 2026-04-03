@@ -24,13 +24,10 @@ class TemplateParam:
     def validate(self, value: Any) -> None:
         if not isinstance(value, self.type):
             raise TemplateError(
-                f"Parameter '{self.name}' expects {self.type.__name__}, "
-                f"got {type(value).__name__}"
+                f"Parameter '{self.name}' expects {self.type.__name__}, got {type(value).__name__}"
             )
         if self.validator is not None and not self.validator(value):
-            raise TemplateError(
-                f"Parameter '{self.name}' failed custom validation"
-            )
+            raise TemplateError(f"Parameter '{self.name}' failed custom validation")
 
 
 class DAGTemplate:
@@ -100,9 +97,7 @@ class DAGTemplate:
         label: str | None = None,
     ) -> DAGTemplate:
         """Add a templated edge. Node names may contain placeholders."""
-        self._edges.append(
-            (from_node, to_node, {"weight": weight, "label": label})
-        )
+        self._edges.append((from_node, to_node, {"weight": weight, "label": label}))
         return self
 
     def validate_params(self, **kwargs: Any) -> list[str]:
@@ -143,9 +138,7 @@ class DAGTemplate:
 
         unknown = set(kwargs.keys()) - set(self._params.keys())
         if unknown:
-            raise TemplateError(
-                f"Unknown parameters: {', '.join(sorted(unknown))}"
-            )
+            raise TemplateError(f"Unknown parameters: {', '.join(sorted(unknown))}")
 
         for name, value in resolved.items():
             self._params[name].validate(value)
@@ -174,9 +167,7 @@ class DAGTemplate:
 
         return self._pattern.sub(replacer, template_str)
 
-    def _substitute_kwargs(
-        self, kwargs: dict[str, Any], values: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _substitute_kwargs(self, kwargs: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
         """Substitute in keyword arguments, only for string values."""
         result: dict[str, Any] = {}
         for key, val in kwargs.items():

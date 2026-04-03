@@ -113,9 +113,7 @@ class PartitionedDAGExecutor:
                         # Skip all nodes in this partition
                         for node_name in partition_info.node_names:
                             if node_name not in result.node_results:
-                                nr = NodeResult(
-                                    name=node_name, status=NodeStatus.SKIPPED
-                                )
+                                nr = NodeResult(name=node_name, status=NodeStatus.SKIPPED)
                                 result.node_results[node_name] = nr
                                 result.skipped += 1
                         failed_partitions.add(pid)
@@ -124,11 +122,7 @@ class PartitionedDAGExecutor:
                 # Extract sub-DAG and tasks for this partition
                 node_names = partition_info.node_names
                 sub_dag = self._dag.subgraph(node_names)
-                sub_tasks = {
-                    name: tasks[name]
-                    for name in node_names
-                    if name in tasks
-                }
+                sub_tasks = {name: tasks[name] for name in node_names if name in tasks}
 
                 # Inject results from previous partitions as pre-completed
                 # (handled naturally by DAGExecutor since only partition nodes are in sub_dag)

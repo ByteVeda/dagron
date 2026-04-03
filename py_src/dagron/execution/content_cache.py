@@ -207,10 +207,13 @@ class FileSystemCacheBackend:
         meta = self._index[key]
 
         # TTL check
-        if self._policy.ttl_seconds is not None and time.time() - meta.created_at > self._policy.ttl_seconds:
-                self.delete(key)
-                self._stats.misses += 1
-                return None, False
+        if (
+            self._policy.ttl_seconds is not None
+            and time.time() - meta.created_at > self._policy.ttl_seconds
+        ):
+            self.delete(key)
+            self._stats.misses += 1
+            return None, False
 
         value_path = self._value_path(key)
         if not value_path.exists():
@@ -289,9 +292,7 @@ class FileSystemCacheBackend:
         # Max entries
         if self._policy.max_entries is not None:
             while len(self._index) >= self._policy.max_entries:
-                oldest_key = min(
-                    self._index, key=lambda k: self._index[k].last_accessed
-                )
+                oldest_key = min(self._index, key=lambda k: self._index[k].last_accessed)
                 self.delete(oldest_key)
                 self._stats.evictions += 1
 
@@ -299,9 +300,7 @@ class FileSystemCacheBackend:
         if self._policy.max_size_bytes is not None:
             total_size = sum(m.size_bytes for m in self._index.values())
             while total_size > self._policy.max_size_bytes and self._index:
-                oldest_key = min(
-                    self._index, key=lambda k: self._index[k].last_accessed
-                )
+                oldest_key = min(self._index, key=lambda k: self._index[k].last_accessed)
                 total_size -= self._index[oldest_key].size_bytes
                 self.delete(oldest_key)
                 self._stats.evictions += 1
@@ -330,17 +329,13 @@ class ContentAddressableCache:
     ) -> str:
         """Compute the cache key for a node."""
         task_hash = self._key_builder.hash_task(task_fn)
-        return self._key_builder.build_key(
-            node_name, task_hash, predecessor_result_hashes
-        )
+        return self._key_builder.build_key(node_name, task_hash, predecessor_result_hashes)
 
     def get(self, key: str) -> tuple[Any, bool]:
         """Get a cached value."""
         return self._backend.get(key)
 
-    def put(
-        self, key: str, value: Any, node_name: str
-    ) -> None:
+    def put(self, key: str, value: Any, node_name: str) -> None:
         """Store a value in the cache."""
         meta = CacheEntryMetadata(
             node_name=node_name,

@@ -9,26 +9,34 @@ from dagron import DAG
 def pipeline_dag():
     """A realistic pipeline DAG."""
     dag = DAG()
-    dag.add_nodes([
-        "input_raw", "input_config",
-        "extract", "validate",
-        "transform_a", "transform_b",
-        "test_a", "test_b",
-        "merge",
-        "output_final",
-    ])
-    dag.add_edges([
-        ("input_raw", "extract"),
-        ("input_config", "extract"),
-        ("extract", "validate"),
-        ("validate", "transform_a"),
-        ("validate", "transform_b"),
-        ("transform_a", "test_a"),
-        ("transform_b", "test_b"),
-        ("test_a", "merge"),
-        ("test_b", "merge"),
-        ("merge", "output_final"),
-    ])
+    dag.add_nodes(
+        [
+            "input_raw",
+            "input_config",
+            "extract",
+            "validate",
+            "transform_a",
+            "transform_b",
+            "test_a",
+            "test_b",
+            "merge",
+            "output_final",
+        ]
+    )
+    dag.add_edges(
+        [
+            ("input_raw", "extract"),
+            ("input_config", "extract"),
+            ("extract", "validate"),
+            ("validate", "transform_a"),
+            ("validate", "transform_b"),
+            ("transform_a", "test_a"),
+            ("transform_b", "test_b"),
+            ("test_a", "merge"),
+            ("test_b", "merge"),
+            ("merge", "output_final"),
+        ]
+    )
     return dag
 
 

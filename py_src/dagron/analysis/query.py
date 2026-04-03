@@ -188,9 +188,7 @@ def _split_operator(expr: str, op: str) -> list[str]:
     return [expr]
 
 
-def _filter_by_depth(
-    dag: DAG, op: str, threshold: int, all_nodes: set[str]
-) -> set[str]:
+def _filter_by_depth(dag: DAG, op: str, threshold: int, all_nodes: set[str]) -> set[str]:
     """Filter nodes by their topological depth."""
     levels = dag.topological_levels()
     result: set[str] = set()

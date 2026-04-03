@@ -189,21 +189,11 @@ class ExecutionTrace:
         total = len(self._events)
         node_events = [e for e in self._events if e.node_name is not None]
         unique_nodes = {e.node_name for e in node_events}
-        completed = sum(
-            1 for e in self._events if e.event_type == TraceEventType.NODE_COMPLETED
-        )
-        failed = sum(
-            1 for e in self._events if e.event_type == TraceEventType.NODE_FAILED
-        )
-        skipped = sum(
-            1 for e in self._events if e.event_type == TraceEventType.NODE_SKIPPED
-        )
-        timed_out = sum(
-            1 for e in self._events if e.event_type == TraceEventType.NODE_TIMED_OUT
-        )
-        cancelled = sum(
-            1 for e in self._events if e.event_type == TraceEventType.NODE_CANCELLED
-        )
+        completed = sum(1 for e in self._events if e.event_type == TraceEventType.NODE_COMPLETED)
+        failed = sum(1 for e in self._events if e.event_type == TraceEventType.NODE_FAILED)
+        skipped = sum(1 for e in self._events if e.event_type == TraceEventType.NODE_SKIPPED)
+        timed_out = sum(1 for e in self._events if e.event_type == TraceEventType.NODE_TIMED_OUT)
+        cancelled = sum(1 for e in self._events if e.event_type == TraceEventType.NODE_CANCELLED)
 
         # Total execution duration
         duration = 0.0

@@ -22,7 +22,7 @@ __all__ = ["DashboardPlugin"]
 def _import_server() -> Any:
     """Lazily import the Rust-backed dashboard server."""
     try:
-        from dagron._internal import RustDashboardServer  # type: ignore[attr-defined]
+        from dagron._internal import RustDashboardServer
     except ImportError as exc:
         raise ImportError(
             "DashboardPlugin requires dagron to be built with the 'dashboard' "

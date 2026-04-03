@@ -176,9 +176,7 @@ class TestDistributedExecutor:
     def test_tracing(self, simple_dag):
         backend = ThreadBackend(max_workers=1)
         tasks = {"a": lambda: "a", "b": lambda: "b", "c": lambda: "c"}
-        with DistributedExecutor(
-            simple_dag, backend, enable_tracing=True
-        ) as executor:
+        with DistributedExecutor(simple_dag, backend, enable_tracing=True) as executor:
             dist_result = executor.execute(tasks)
 
         result = dist_result.execution_result

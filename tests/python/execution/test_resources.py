@@ -154,10 +154,12 @@ class TestResourceAwareExecutor:
 
         order = []
         executor = ResourceAwareExecutor(dag, pool, requirements, costs={"a": 2.0, "b": 1.0})
-        result = executor.execute({
-            "a": lambda: order.append("a") or "a",  # type: ignore[func-returns-value]
-            "b": lambda: order.append("b") or "b",  # type: ignore[func-returns-value]
-        })
+        result = executor.execute(
+            {
+                "a": lambda: order.append("a") or "a",  # type: ignore[func-returns-value]
+                "b": lambda: order.append("b") or "b",  # type: ignore[func-returns-value]
+            }
+        )
 
         assert result.succeeded == 2
         # Both should complete (order depends on scheduling)
@@ -183,10 +185,12 @@ class TestResourceAwareExecutor:
         pool = ResourcePool({"cpu_slots": 4})
 
         executor = ResourceAwareExecutor(dag, pool, fail_fast=True)
-        result = executor.execute({
-            "a": lambda: (_ for _ in ()).throw(ValueError("boom")),
-            "b": lambda: "ok",
-        })
+        result = executor.execute(
+            {
+                "a": lambda: (_ for _ in ()).throw(ValueError("boom")),
+                "b": lambda: "ok",
+            }
+        )
 
         assert result.failed == 1
         assert result.skipped == 1
@@ -221,12 +225,14 @@ class TestResourceAwareExecutor:
         }
 
         executor = ResourceAwareExecutor(dag, pool, requirements)
-        result = executor.execute({
-            "a": lambda: "a",
-            "b": lambda: "b",
-            "c": lambda: "c",
-            "d": lambda: "d",
-        })
+        result = executor.execute(
+            {
+                "a": lambda: "a",
+                "b": lambda: "b",
+                "c": lambda: "c",
+                "d": lambda: "d",
+            }
+        )
 
         assert result.succeeded == 4
 
@@ -237,9 +243,7 @@ class TestResourceAwareExecutor:
         pool = ResourcePool({"gpu": 1})
         requirements = {"a": ResourceRequirements.gpu(1)}
 
-        executor = ResourceAwareExecutor(
-            dag, pool, requirements, enable_tracing=True
-        )
+        executor = ResourceAwareExecutor(dag, pool, requirements, enable_tracing=True)
         result = executor.execute({"a": lambda: 1})
 
         assert result.trace is not None
@@ -270,9 +274,11 @@ class TestAsyncResourceAwareExecutor:
             return 2
 
         executor = AsyncResourceAwareExecutor(dag, pool, requirements)
-        result = await executor.execute({
-            "a": task_a,
-            "b": task_b,
-        })
+        result = await executor.execute(
+            {
+                "a": task_a,
+                "b": task_b,
+            }
+        )
 
         assert result.succeeded == 2

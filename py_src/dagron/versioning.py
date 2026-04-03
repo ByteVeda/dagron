@@ -149,9 +149,7 @@ class VersionedDAG:
                 with no covering snapshot.
         """
         if version < 0 or version > self._version:
-            raise ValueError(
-                f"Version {version} out of range [0, {self._version}]."
-            )
+            raise ValueError(f"Version {version} out of range [0, {self._version}].")
         # Check if version is before base and no snapshot covers it
         if version < self._base_version and version not in self._snapshots:
             # Check if any snapshot <= version exists
@@ -174,7 +172,9 @@ class VersionedDAG:
         # Find the best snapshot to start from
         best_snap_version = None
         for snap_v in self._snapshots:
-            if snap_v <= up_to_version and (best_snap_version is None or snap_v > best_snap_version):
+            if snap_v <= up_to_version and (
+                best_snap_version is None or snap_v > best_snap_version
+            ):
                 best_snap_version = snap_v
 
         if best_snap_version is not None:

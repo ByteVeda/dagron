@@ -137,9 +137,7 @@ class TestPartitionCommunicationMin:
         dag.add_edge("a", "b")
         dag.add_edge("b", "c")
 
-        result = dag.partition_communication_min(
-            2, max_iterations=5, max_imbalance=0.5
-        )
+        result = dag.partition_communication_min(2, max_iterations=5, max_imbalance=0.5)
         assert len(result.partitions) <= 2
 
 
@@ -153,11 +151,13 @@ class TestPartitionedDAGExecutor:
         dag.add_edge("b", "c")
 
         executor = PartitionedDAGExecutor(dag, k=2, strategy="level_based")
-        result = executor.execute({
-            "a": lambda: 1,
-            "b": lambda: 2,
-            "c": lambda: 3,
-        })
+        result = executor.execute(
+            {
+                "a": lambda: 1,
+                "b": lambda: 2,
+                "c": lambda: 3,
+            }
+        )
 
         assert result.succeeded == 3
         assert result.node_results["a"].result == 1
@@ -176,12 +176,14 @@ class TestPartitionedDAGExecutor:
         dag.add_edge("c", "d")
 
         executor = PartitionedDAGExecutor(dag, k=2, strategy="balanced")
-        result = executor.execute({
-            "a": lambda: "a",
-            "b": lambda: "b",
-            "c": lambda: "c",
-            "d": lambda: "d",
-        })
+        result = executor.execute(
+            {
+                "a": lambda: "a",
+                "b": lambda: "b",
+                "c": lambda: "c",
+                "d": lambda: "d",
+            }
+        )
 
         assert result.succeeded == 4
 
@@ -198,11 +200,13 @@ class TestPartitionedDAGExecutor:
         def fail():
             raise ValueError("boom")
 
-        result = executor.execute({
-            "a": fail,
-            "b": lambda: 2,
-            "c": lambda: 3,
-        })
+        result = executor.execute(
+            {
+                "a": fail,
+                "b": lambda: 2,
+                "c": lambda: 3,
+            }
+        )
 
         assert result.failed >= 1
 
@@ -222,13 +226,18 @@ class TestPartitionedDAGExecutor:
         dag.add_edge("b", "c")
 
         executor = PartitionedDAGExecutor(
-            dag, k=2, strategy="communication_min",
-            max_iterations=5, max_imbalance=0.5,
+            dag,
+            k=2,
+            strategy="communication_min",
+            max_iterations=5,
+            max_imbalance=0.5,
         )
-        result = executor.execute({
-            "a": lambda: 1,
-            "b": lambda: 2,
-            "c": lambda: 3,
-        })
+        result = executor.execute(
+            {
+                "a": lambda: 1,
+                "b": lambda: 2,
+                "c": lambda: 3,
+            }
+        )
 
         assert result.succeeded == 3

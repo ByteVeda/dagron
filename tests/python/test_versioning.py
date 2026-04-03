@@ -154,13 +154,7 @@ class TestVersionedDAG:
     def test_wrap_existing_dag(self):
         from dagron import DAGBuilder
 
-        dag = (
-            DAGBuilder()
-            .add_node("x")
-            .add_node("y")
-            .add_edge("x", "y")
-            .build()
-        )
+        dag = DAGBuilder().add_node("x").add_node("y").add_edge("x", "y").build()
         vdag = VersionedDAG(dag)
         assert vdag.version == 0
         assert vdag.dag.node_count() == 2

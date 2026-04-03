@@ -114,11 +114,7 @@ class DistributedExecutor:
             for node_id in level:
                 name = node_id.name
 
-                if (
-                    self._fail_fast
-                    and failed_nodes
-                    and get_ancestors(name) & failed_nodes
-                ):
+                if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
                     _record_skip(name, result, self._callbacks, trace)
                     continue
 

@@ -23,9 +23,7 @@ def _make_result(completed=(), failed=(), skipped=()):
         )
         result.failed += 1
     for name in skipped:
-        result.node_results[name] = NodeResult(
-            name=name, status=NodeStatus.SKIPPED
-        )
+        result.node_results[name] = NodeResult(name=name, status=NodeStatus.SKIPPED)
         result.skipped += 1
     return result
 

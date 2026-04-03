@@ -22,8 +22,7 @@ class RayBackend:
             import ray
         except ImportError:
             raise ImportError(
-                "Ray is required for RayBackend. "
-                "Install with: pip install dagron[ray]"
+                "Ray is required for RayBackend. Install with: pip install dagron[ray]"
             ) from None
 
         self._num_cpus = num_cpus

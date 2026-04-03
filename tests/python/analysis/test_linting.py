@@ -12,13 +12,7 @@ class TestLint:
         assert report.info_count == 1  # EMPTY_GRAPH
 
     def test_clean_dag(self):
-        dag = (
-            DAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
-        )
+        dag = DAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         report = dag.lint()
         assert report.ok
 
@@ -108,13 +102,7 @@ class TestLint:
 
 class TestDAGSchema:
     def test_single_root_pass(self):
-        dag = (
-            DAGBuilder()
-            .add_node("a")
-            .add_node("b")
-            .add_edge("a", "b")
-            .build()
-        )
+        dag = DAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         schema = DAGSchema(single_root=True)
         errors = schema.validate(dag)
         assert errors == []
