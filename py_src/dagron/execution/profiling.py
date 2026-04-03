@@ -114,9 +114,7 @@ def profile_execution(dag: DAG, result: ExecutionResult) -> ProfileReport:
         if not pred_map[name]:
             earliest_start[name] = 0.0
         else:
-            earliest_start[name] = max(
-                earliest_start[p] + durations[p] for p in pred_map[name]
-            )
+            earliest_start[name] = max(earliest_start[p] + durations[p] for p in pred_map[name])
 
     # Compute makespan
     makespan = max(earliest_start[n] + durations[n] for n in topo_order)
@@ -127,9 +125,7 @@ def profile_execution(dag: DAG, result: ExecutionResult) -> ProfileReport:
         if not succ_map[name]:
             latest_start[name] = makespan - durations[name]
         else:
-            latest_start[name] = (
-                min(latest_start[s] for s in succ_map[name]) - durations[name]
-            )
+            latest_start[name] = min(latest_start[s] for s in succ_map[name]) - durations[name]
 
     # Compute slack and identify critical path nodes
     slack: dict[str, float] = {}
@@ -176,9 +172,7 @@ def profile_execution(dag: DAG, result: ExecutionResult) -> ProfileReport:
     # Actual max parallelism from topological levels
     levels = dag.topological_levels()
     actual_max_parallelism = (
-        max(sum(1 for n in level if n.name in durations) for level in levels)
-        if levels
-        else 0
+        max(sum(1 for n in level if n.name in durations) for level in levels) if levels else 0
     )
 
     return ProfileReport(

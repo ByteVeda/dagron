@@ -114,10 +114,12 @@ class TestApprovalGateAsync:
 
 class TestGateController:
     def test_approve_and_status(self):
-        controller = GateController({
-            "deploy": ApprovalGate(),
-            "notify": ApprovalGate(),
-        })
+        controller = GateController(
+            {
+                "deploy": ApprovalGate(),
+                "notify": ApprovalGate(),
+            }
+        )
         assert controller.status("deploy") == GateStatus.PENDING
         controller.approve("deploy")
         assert controller.status("deploy") == GateStatus.APPROVED
@@ -160,10 +162,12 @@ class TestGateController:
         controller.wait_sync("new")
 
     def test_reset_all(self):
-        controller = GateController({
-            "a": ApprovalGate(auto_approve=True),
-            "b": ApprovalGate(auto_approve=True),
-        })
+        controller = GateController(
+            {
+                "a": ApprovalGate(auto_approve=True),
+                "b": ApprovalGate(auto_approve=True),
+            }
+        )
         assert controller.status("a") == GateStatus.APPROVED
         controller.reset_all()
         assert controller.status("a") == GateStatus.PENDING

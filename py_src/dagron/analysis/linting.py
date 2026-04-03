@@ -269,29 +269,19 @@ class DAGSchema:
         stats = dag.stats()
 
         if self.single_root is True and stats.root_count != 1:
-            errors.append(
-                f"Expected single root, found {stats.root_count}."
-            )
+            errors.append(f"Expected single root, found {stats.root_count}.")
 
         if self.single_leaf is True and stats.leaf_count != 1:
-            errors.append(
-                f"Expected single leaf, found {stats.leaf_count}."
-            )
+            errors.append(f"Expected single leaf, found {stats.leaf_count}.")
 
         if self.max_depth is not None and stats.depth > self.max_depth:
-            errors.append(
-                f"Depth {stats.depth} exceeds maximum {self.max_depth}."
-            )
+            errors.append(f"Depth {stats.depth} exceeds maximum {self.max_depth}.")
 
         if self.min_nodes is not None and stats.node_count < self.min_nodes:
-            errors.append(
-                f"Node count {stats.node_count} below minimum {self.min_nodes}."
-            )
+            errors.append(f"Node count {stats.node_count} below minimum {self.min_nodes}.")
 
         if self.max_nodes is not None and stats.node_count > self.max_nodes:
-            errors.append(
-                f"Node count {stats.node_count} exceeds maximum {self.max_nodes}."
-            )
+            errors.append(f"Node count {stats.node_count} exceeds maximum {self.max_nodes}.")
 
         if self.max_in_degree is not None:
             for node in dag.topological_sort():
@@ -310,9 +300,7 @@ class DAGSchema:
                     )
 
         if self.connected is True and not stats.is_weakly_connected:
-            errors.append(
-                f"DAG is not connected ({stats.component_count} components)."
-            )
+            errors.append(f"DAG is not connected ({stats.component_count} components).")
 
         if self.root_pattern is not None:
             roots = dag.roots()

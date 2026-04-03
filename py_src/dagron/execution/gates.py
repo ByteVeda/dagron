@@ -235,10 +235,7 @@ class GateController:
 
     def waiting_gates(self) -> list[str]:
         """Return names of all gates currently in WAITING state."""
-        return [
-            name for name, gate in self._gates.items()
-            if gate.status == GateStatus.WAITING
-        ]
+        return [name for name, gate in self._gates.items() if gate.status == GateStatus.WAITING]
 
     def get_gate(self, name: str) -> ApprovalGate | None:
         """Get a gate by name, or None if not found."""

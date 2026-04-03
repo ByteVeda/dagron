@@ -64,11 +64,13 @@ class TestPluginIntegration:
             port = server.port
 
             executor = DAGExecutor(dag, hooks=hooks)
-            result = executor.execute({
-                "a": lambda: 1,
-                "b": lambda: 2,
-                "c": lambda: 3,
-            })
+            result = executor.execute(
+                {
+                    "a": lambda: 1,
+                    "b": lambda: 2,
+                    "c": lambda: 3,
+                }
+            )
 
             assert result.succeeded == 3
 
@@ -99,10 +101,12 @@ class TestPluginIntegration:
             port = server.port
 
             executor = DAGExecutor(dag, hooks=hooks)
-            result = executor.execute({
-                "ok": lambda: 42,
-                "bad": lambda: (_ for _ in ()).throw(ValueError("boom")),
-            })
+            result = executor.execute(
+                {
+                    "ok": lambda: 42,
+                    "bad": lambda: (_ for _ in ()).throw(ValueError("boom")),
+                }
+            )
 
             assert result.failed >= 1
 

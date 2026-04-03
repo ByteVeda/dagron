@@ -105,11 +105,7 @@ class CachedDAGExecutor:
 
         for name in topo_order:
             # Skip if a dependency has failed
-            if (
-                self._fail_fast
-                and failed_nodes
-                and get_ancestors(name) & failed_nodes
-            ):
+            if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
                 nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
                 result.node_results[name] = nr
                 result.skipped += 1

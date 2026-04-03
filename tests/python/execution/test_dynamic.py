@@ -1,6 +1,5 @@
 """Tests for Dynamic DAG Modification."""
 
-
 from dagron import DAG
 from dagron.execution._types import NodeStatus
 from dagron.execution.dynamic import (
@@ -58,10 +57,12 @@ class TestDynamicExecutor:
             )
 
         executor = DynamicExecutor(dag, expanders={"discover": expander})
-        result = executor.execute({
-            "discover": lambda: order.append("discover") or ["item1"],  # type: ignore[func-returns-value]
-            "finish": lambda: order.append("finish") or "done",  # type: ignore[func-returns-value]
-        })
+        result = executor.execute(
+            {
+                "discover": lambda: order.append("discover") or ["item1"],  # type: ignore[func-returns-value]
+                "finish": lambda: order.append("finish") or "done",  # type: ignore[func-returns-value]
+            }
+        )
 
         assert result.succeeded == 3
         assert "dynamic_1" in result.node_results
@@ -155,11 +156,13 @@ class TestDynamicExecutor:
             return DynamicModification(remove_nodes=["c"])
 
         executor = DynamicExecutor(dag, expanders={"a": expander})
-        result = executor.execute({
-            "a": lambda: 1,
-            "b": lambda: 2,
-            "c": lambda: 3,
-        })
+        result = executor.execute(
+            {
+                "a": lambda: 1,
+                "b": lambda: 2,
+                "c": lambda: 3,
+            }
+        )
 
         assert result.succeeded == 2
         assert "c" not in result.node_results
@@ -286,10 +289,12 @@ class TestDynamicOrphanGC:
             )
 
         executor = DynamicExecutor(dag, expanders={"parent": expander})
-        result = executor.execute({
-            "parent": lambda: "p",
-            "static_sibling": lambda: "s",
-        })
+        result = executor.execute(
+            {
+                "parent": lambda: "p",
+                "static_sibling": lambda: "s",
+            }
+        )
         assert "static_sibling" in result.node_results
         assert result.node_results["static_sibling"].status == NodeStatus.COMPLETED
 

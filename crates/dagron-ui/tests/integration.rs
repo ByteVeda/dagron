@@ -34,7 +34,13 @@ fn test_index_returns_html() {
 
     let resp = reqwest::blocking::get(format!("{url}/")).unwrap();
     assert_eq!(resp.status(), 200);
-    let ct = resp.headers().get("content-type").unwrap().to_str().unwrap().to_string();
+    let ct = resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
     assert!(ct.contains("text/html"));
     let body = resp.text().unwrap();
     assert!(body.contains("dagron"));

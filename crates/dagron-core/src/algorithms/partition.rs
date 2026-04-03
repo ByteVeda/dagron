@@ -256,18 +256,24 @@ pub fn partition_communication_min<P>(
 
                     // Check topological constraint: all predecessors must be in
                     // earlier-or-same partition, all successors in same-or-later
-                    let can_move = graph.edges_directed(node, petgraph::Direction::Incoming)
+                    let can_move = graph
+                        .edges_directed(node, petgraph::Direction::Incoming)
                         .all(|e| {
-                            let pred_pid = result.node_to_partition.get(&e.source())
-                                .copied().unwrap_or(0);
+                            let pred_pid = result
+                                .node_to_partition
+                                .get(&e.source())
+                                .copied()
+                                .unwrap_or(0);
                             pred_pid <= to_pid
                         })
-                        && graph.edges(node)
-                            .all(|e| {
-                                let succ_pid = result.node_to_partition.get(&e.target())
-                                    .copied().unwrap_or(0);
-                                succ_pid >= to_pid
-                            });
+                        && graph.edges(node).all(|e| {
+                            let succ_pid = result
+                                .node_to_partition
+                                .get(&e.target())
+                                .copied()
+                                .unwrap_or(0);
+                            succ_pid >= to_pid
+                        });
 
                     if !can_move {
                         continue;
@@ -390,9 +396,7 @@ fn compute_partition_order(
     }
 
     let mut levels = Vec::new();
-    let mut current: Vec<usize> = (0..num_partitions)
-        .filter(|&i| in_degree[i] == 0)
-        .collect();
+    let mut current: Vec<usize> = (0..num_partitions).filter(|&i| in_degree[i] == 0).collect();
     current.sort();
 
     while !current.is_empty() {

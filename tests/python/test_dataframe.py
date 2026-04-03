@@ -12,6 +12,7 @@ from dagron.dataframe import (
 def _has_pandas():
     try:
         import pandas  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -20,6 +21,7 @@ def _has_pandas():
 def _has_polars():
     try:
         import polars  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -32,9 +34,7 @@ class TestSchemaValidation:
         assert len(violations) == 1
         assert "Expected DataFrame" in violations[0].message
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_valid(self):
         import pandas as pd
 
@@ -45,9 +45,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert violations == []
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_missing_column(self):
         import pandas as pd
 
@@ -58,9 +56,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert any("Missing required column 'name'" in v.message for v in violations)
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_optional_column(self):
         import pandas as pd
 
@@ -71,9 +67,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert violations == []
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_row_count(self):
         import pandas as pd
 
@@ -82,9 +76,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert any("at least 5 rows" in v.message for v in violations)
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_max_rows(self):
         import pandas as pd
 
@@ -93,9 +85,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert any("at most 10 rows" in v.message for v in violations)
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_dtype_check(self):
         import pandas as pd
 
@@ -106,9 +96,7 @@ class TestSchemaValidation:
         violations = validate_schema(df, schema, "test")
         assert any("dtype" in v.message for v in violations)
 
-    @pytest.mark.skipif(
-        not _has_pandas(), reason="pandas not installed"
-    )
+    @pytest.mark.skipif(not _has_pandas(), reason="pandas not installed")
     def test_pandas_nullable_check(self):
         import numpy as np
         import pandas as pd

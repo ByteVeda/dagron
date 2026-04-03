@@ -42,9 +42,7 @@ class TestHookRegistry:
         registry = HookRegistry()
         calls = []
 
-        unregister = registry.register(
-            HookEvent.POST_NODE, lambda ctx: calls.append(1)
-        )
+        unregister = registry.register(HookEvent.POST_NODE, lambda ctx: calls.append(1))
         registry.fire(HookContext(event=HookEvent.POST_NODE))
         assert calls == [1]
 
@@ -97,12 +95,14 @@ class TestHookRegistry:
 
         registry.register(HookEvent.ON_ERROR, capture)
         err = ValueError("test")
-        registry.fire(HookContext(
-            event=HookEvent.ON_ERROR,
-            node_name="step1",
-            error=err,
-            metadata={"key": "val"},
-        ))
+        registry.fire(
+            HookContext(
+                event=HookEvent.ON_ERROR,
+                node_name="step1",
+                error=err,
+                metadata={"key": "val"},
+            )
+        )
 
         assert len(captured) == 1
         ctx = captured[0]

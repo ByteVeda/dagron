@@ -44,6 +44,7 @@ class PluginManager:
         """
         discovered: list[str] = []
         from importlib.metadata import entry_points
+
         eps = entry_points(group="dagron.plugins")
 
         for ep in eps:
@@ -104,9 +105,7 @@ def dagron_plugin(cls: type) -> type:
             ...
     """
     if not (isinstance(cls, type) and issubclass(cls, DagronPlugin)):
-        raise TypeError(
-            f"@dagron_plugin can only decorate DagronPlugin subclasses, got {cls}"
-        )
+        raise TypeError(f"@dagron_plugin can only decorate DagronPlugin subclasses, got {cls}")
     # Lazy import to avoid circular imports
     from dagron import _plugin_manager  # type: ignore[attr-defined]
 

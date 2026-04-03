@@ -38,8 +38,7 @@ def pretty_print(
     nc = dag.node_count()
     if nc > max_nodes:
         raise ValueError(
-            f"Graph has {nc} nodes, exceeding max_nodes={max_nodes}. "
-            f"Increase max_nodes to render."
+            f"Graph has {nc} nodes, exceeding max_nodes={max_nodes}. Increase max_nodes to render."
         )
 
     if nc == 0:
@@ -275,7 +274,5 @@ def _svg_text(text: str) -> str:
 
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" '
-        f'width="{width}" height="{height}">\n'
-        + "\n".join(text_elements)
-        + "\n</svg>"
+        f'width="{width}" height="{height}">\n' + "\n".join(text_elements) + "\n</svg>"
     )

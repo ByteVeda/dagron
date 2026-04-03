@@ -125,11 +125,15 @@ class TestCheckpointGatePersistence:
         from dagron.execution.gates import ApprovalGate, GateController
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            controller = GateController({
-                "deploy": ApprovalGate(auto_approve=True),
-            })
+            controller = GateController(
+                {
+                    "deploy": ApprovalGate(auto_approve=True),
+                }
+            )
             executor = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=controller,
             )
             tasks = {"a": lambda: "a", "b": lambda: "b", "c": lambda: "c", "d": lambda: "d"}
             executor.execute(tasks)
@@ -145,21 +149,29 @@ class TestCheckpointGatePersistence:
         from dagron.execution.gates import ApprovalGate, GateController, GateStatus
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            controller = GateController({
-                "deploy": ApprovalGate(auto_approve=True),
-            })
+            controller = GateController(
+                {
+                    "deploy": ApprovalGate(auto_approve=True),
+                }
+            )
             executor = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=controller,
             )
             tasks = {"a": lambda: "a", "b": lambda: "b", "c": lambda: "c", "d": lambda: "d"}
             executor.execute(tasks)
 
             # Create a new controller (simulating process restart)
-            new_controller = GateController({
-                "deploy": ApprovalGate(),  # starts PENDING
-            })
+            new_controller = GateController(
+                {
+                    "deploy": ApprovalGate(),  # starts PENDING
+                }
+            )
             executor2 = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=new_controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=new_controller,
             )
             executor2.resume(tasks)
             assert new_controller.status("deploy") == GateStatus.APPROVED
@@ -171,7 +183,9 @@ class TestCheckpointGatePersistence:
             gate = ApprovalGate()
             controller = GateController({"deploy": gate})
             executor = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=controller,
             )
             tasks = {"a": lambda: "a", "b": lambda: "b", "c": lambda: "c", "d": lambda: "d"}
 
@@ -183,7 +197,9 @@ class TestCheckpointGatePersistence:
 
             new_controller = GateController({"deploy": ApprovalGate()})
             executor2 = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=new_controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=new_controller,
             )
             executor2.resume(tasks)
             # WAITING should be restored as PENDING
@@ -199,9 +215,12 @@ class TestCheckpointGatePersistence:
 
             # Resume with a gate controller — should not crash
             from dagron.execution.gates import ApprovalGate, GateController, GateStatus
+
             controller = GateController({"deploy": ApprovalGate()})
             executor2 = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=controller,
             )
             result = executor2.resume(tasks)
             assert result.succeeded == 4
@@ -216,14 +235,18 @@ class TestCheckpointGatePersistence:
             gate.reject("not ready")
             controller = GateController({"deploy": gate})
             executor = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=controller,
             )
             tasks = {"a": lambda: "a", "b": lambda: "b", "c": lambda: "c", "d": lambda: "d"}
             executor.execute(tasks)
 
             new_controller = GateController({"deploy": ApprovalGate()})
             executor2 = CheckpointExecutor(
-                chain_dag, checkpoint_dir=tmpdir, gate_controller=new_controller,
+                chain_dag,
+                checkpoint_dir=tmpdir,
+                gate_controller=new_controller,
             )
             executor2.resume(tasks)
             assert new_controller.status("deploy") == GateStatus.REJECTED

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from dagron._internal import DAG
     from dagron.execution._types import ExecutionCallbacks, ExecutionResult
 
+
 @dataclass(frozen=True)
 class TaskSpec:
     """Metadata for a decorated task function."""
@@ -176,7 +177,9 @@ class Pipeline:
 
         return validate_contracts(self, extra_contracts)
 
-    def _make_task_callables(self, overrides: dict[str, Any] | None = None) -> dict[str, Callable[[], Any]]:
+    def _make_task_callables(
+        self, overrides: dict[str, Any] | None = None
+    ) -> dict[str, Callable[[], Any]]:
         """Build the task dict for executors, wiring outputs as inputs."""
         results: dict[str, Any] = {}
         if overrides:
