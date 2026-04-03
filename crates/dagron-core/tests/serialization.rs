@@ -316,13 +316,15 @@ fn bincode_deterministic_output() {
     dag.add_node("a".into(), ()).unwrap();
     dag.add_node("b".into(), ()).unwrap();
     dag.add_node("c".into(), ()).unwrap();
-    dag.add_edge("a", "b", Some(1.5), Some("x".into()))
-        .unwrap();
+    dag.add_edge("a", "b", Some(1.5), Some("x".into())).unwrap();
     dag.add_edge("b", "c", None, None).unwrap();
 
     let bytes1 = dag.to_bincode(|_| None).unwrap();
     let bytes2 = dag.to_bincode(|_| None).unwrap();
-    assert_eq!(bytes1, bytes2, "Two serializations of the same graph must be byte-identical");
+    assert_eq!(
+        bytes1, bytes2,
+        "Two serializations of the same graph must be byte-identical"
+    );
 }
 
 #[test]
@@ -332,8 +334,13 @@ fn bincode_size_matches_actual() {
         dag.add_node(format!("n_{i}"), i).unwrap();
     }
     for i in 0..499 {
-        dag.add_edge(&format!("n_{i}"), &format!("n_{}", i + 1), Some(i as f64), None)
-            .unwrap();
+        dag.add_edge(
+            &format!("n_{i}"),
+            &format!("n_{}", i + 1),
+            Some(i as f64),
+            None,
+        )
+        .unwrap();
     }
 
     let predicted = dag
@@ -342,5 +349,9 @@ fn bincode_size_matches_actual() {
     let actual = dag
         .to_bincode(|p| Some(serde_json::Value::Number((*p).into())))
         .unwrap();
-    assert_eq!(predicted, actual.len(), "bincode_size() must equal to_bincode().len()");
+    assert_eq!(
+        predicted,
+        actual.len(),
+        "bincode_size() must equal to_bincode().len()"
+    );
 }

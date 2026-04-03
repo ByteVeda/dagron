@@ -139,12 +139,7 @@ impl DashboardState {
     // -- Hook handlers ----------------------------------------------------
 
     /// PRE_EXECUTE: snapshot the DAG and init all nodes to "pending".
-    pub fn reset(
-        &self,
-        dag_dot: String,
-        nodes: Vec<String>,
-        edges: Vec<(String, String)>,
-    ) {
+    pub fn reset(&self, dag_dot: String, nodes: Vec<String>, edges: Vec<(String, String)>) {
         let now_wall = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

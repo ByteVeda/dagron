@@ -56,9 +56,8 @@ pub struct PyDashboardHandle {
 impl PyDashboardHandle {
     #[new]
     fn new(host: &str, port: u16) -> PyResult<Self> {
-        let handle = DashboardHandle::start(host, port).map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(e.to_string())
-        })?;
+        let handle = DashboardHandle::start(host, port)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
         Ok(Self {
             handle: Some(handle),
         })
@@ -108,7 +107,14 @@ impl PyDashboardHandle {
         cancelled: u32,
     ) -> PyResult<()> {
         self.with_handle(|h| {
-            h.execution_finished(total_duration, succeeded, failed, skipped, timed_out, cancelled)
+            h.execution_finished(
+                total_duration,
+                succeeded,
+                failed,
+                skipped,
+                timed_out,
+                cancelled,
+            )
         })
     }
 

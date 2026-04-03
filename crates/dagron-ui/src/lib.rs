@@ -149,9 +149,14 @@ impl DashboardHandle {
         timed_out: u32,
         cancelled: u32,
     ) {
-        self.app_state
-            .dashboard
-            .execution_finished(total_duration, succeeded, failed, skipped, timed_out, cancelled);
+        self.app_state.dashboard.execution_finished(
+            total_duration,
+            succeeded,
+            failed,
+            skipped,
+            timed_out,
+            cancelled,
+        );
     }
 
     pub fn set_gate_callback(&self, cb: Arc<dyn GateCallback>) {
