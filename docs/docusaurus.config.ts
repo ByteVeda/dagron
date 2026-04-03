@@ -8,10 +8,10 @@ const config: Config = {
   tagline: 'High-performance DAG execution engine for Python, powered by Rust',
   favicon: 'img/favicon.ico',
 
-  url: 'https://dagron.dev',
-  baseUrl: '/',
+  url: 'https://byteveda.github.io',
+  baseUrl: '/dagron/',
 
-  organizationName: 'dagron',
+  organizationName: 'ByteVeda',
   projectName: 'dagron',
 
   onBrokenLinks: 'throw',
@@ -80,17 +80,17 @@ const config: Config = {
           label: 'API Reference',
         },
         {
-          href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md',
+          href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md',
           label: 'Changelog',
           position: 'right',
         },
         {
-          href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md',
+          href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md',
           label: 'Contributing',
           position: 'right',
         },
         {
-          href: 'https://github.com/dagron/dagron',
+          href: 'https://github.com/ByteVeda/dagron',
           label: 'GitHub',
           position: 'right',
         },
@@ -109,10 +109,10 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/dagron/dagron'},
+            {label: 'GitHub', href: 'https://github.com/ByteVeda/dagron'},
             {label: 'PyPI', href: 'https://pypi.org/project/dagron/'},
-            {label: 'Changelog', href: 'https://github.com/pratyush618/dagron/blob/master/CHANGELOG.md'},
-            {label: 'Contributing', href: 'https://github.com/pratyush618/dagron/blob/master/CONTRIBUTING.md'},
+            {label: 'Changelog', href: 'https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md'},
+            {label: 'Contributing', href: 'https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md'},
           ],
         },
       ],
