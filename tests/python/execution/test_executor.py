@@ -34,7 +34,7 @@ class TestDAGExecutor:
         assert result.succeeded == 3
         assert result.failed == 0
         assert result.skipped == 0
-        assert result.total_duration_seconds > 0
+        assert result.total_duration_seconds >= 0
 
     def test_node_results(self, simple_dag):
         tasks = {

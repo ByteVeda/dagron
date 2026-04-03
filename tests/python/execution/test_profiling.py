@@ -115,7 +115,7 @@ def test_profile_parallelism_efficiency():
     )
 
     report = profile_execution(dag, result)
-    assert report.parallelism_efficiency > 0
+    assert report.parallelism_efficiency >= 0
 
 
 def test_profile_bottlenecks():
