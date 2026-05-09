@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.1.1] - 2026-05-10
 
 ### Added
 
@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `ExecutionResult.__getitem__` and `__contains__` accept `str`, `NodeRef`, or `FlowFuture[T]`.
 - `NodeResult` is now `NodeResult[T]` (PEP 695 generic). Existing references default to `NodeResult[Any]` and remain backwards compatible.
 - `@task` is now flow-aware: outside a `@flow` body it executes normally; inside one it records the call and returns `FlowFuture[T]`. The same decorator works for both the legacy `Pipeline` and the new `@flow` API.
+
+### Docs
+
+- Migrated documentation site from Docusaurus 3 to Fumadocs 16 (Next.js 16 + Tailwind v4 + pnpm). Same deploy URL (`byteveda.github.io/dagron/`). Three sidebar root sections: **Guide**, **Typed & Reactive**, **API Reference**. New reusable component library: `ui/` primitives, MDX globals (`DagDiagram`, `StatusBadge`, `EffectBadge`, `FeatureCard`/`Grid`, `ApiSignature`, `ParamTable`), and a client-side themed Mermaid component.
 
 ## [0.1.0] - 2026-03-06
 

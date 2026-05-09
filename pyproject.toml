@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dagron"
-version = "0.1.0"
+version = "0.1.1"
 description = "A fast Rust-backed DAG engine for Python"
 readme = "README.md"
 requires-python = ">=3.12"

@@ -119,7 +119,7 @@ del _apply_patches
 # Module-level plugin manager singleton
 _plugin_manager = PluginManager()
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 def __getattr__(name: str) -> object:
