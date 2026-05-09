@@ -3,8 +3,6 @@ title: Distributed Execution
 description: Execute DAG nodes across threads, processes, Ray clusters, and Celery workers with pluggable backends.
 ---
 
-# Distributed Execution
-
 dagron's distributed execution system lets you run DAG nodes across different concurrency and distribution primitives -- from local thread pools to Ray clusters and Celery workers -- using a single, unified API. A pluggable `DistributedBackend` protocol abstracts away the transport, so you can switch from threads to Ray by changing one line.
 
 For large DAGs, the `PartitionedDAGExecutor` splits the graph into partitions and executes each partition as a unit, minimizing cross-partition communication.

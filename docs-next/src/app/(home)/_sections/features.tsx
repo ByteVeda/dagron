@@ -6,37 +6,37 @@ const FEATURES = [
     title: "Typed Node Handles",
     description:
       "NodeRef carries an Arc<str>+epoch handle returned by add_node — every API accepts str | NodeRef, stale handles error fast.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "@dagron.flow",
     description:
       "Tawazi-style: write a Python function, let the call structure become the DAG. Pythonic, no string IDs.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "Reactive Engine",
     description:
       "Signal/Computed/Watcher with auto-tracked deps. ~10 µs to recompute one branch out of 10k after upstream mutation.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "Content-Addressed Cache",
     description:
       "Nix-flake-style cross-process cache backed by the filesystem. Two CI workers share intermediates without coordination.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "Time-Travel Replay",
     description:
       "Append-only JSONL traces + payload-deduped CAS. replay(at=t) reconstructs any past run state.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "Effect-Typed Tasks",
     description:
       "PURE / READ / WRITE / NETWORK / NONDETERMINISTIC tags drive cache opt-in, replay safety, and executor isolation.",
-    guideHref: "/guide/typed-and-reactive",
+    guideHref: "/typed-and-reactive",
   },
   {
     title: "DAG Builder",

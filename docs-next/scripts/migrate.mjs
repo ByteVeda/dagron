@@ -77,6 +77,31 @@ function relabelDotCodeBlocks(src) {
   return src.replace(/^```dot\s*$/gm, "```text");
 }
 
+/**
+ * Fumadocs' `<DocsTitle>` already renders the frontmatter `title`. If the
+ * MDX body opens with `# Same Title`, drop it so the page doesn't print
+ * the heading twice. Tolerates leading blank lines and arbitrary
+ * whitespace around the heading text.
+ */
+function dropDuplicateH1(src) {
+  const fmMatch = src.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (!fmMatch) return src;
+  const titleMatch = fmMatch[1].match(/^title:\s*(.+?)\s*$/m);
+  if (!titleMatch) return src;
+  const title = titleMatch[1].replace(/^["']|["']$/g, "").trim();
+  const body = src.slice(fmMatch[0].length);
+
+  // Match the FIRST `# Heading` line (allowing leading blank lines).
+  const h1Re = /^[\s\n]*#\s+(.+?)\s*$/m;
+  const h1Match = body.match(h1Re);
+  if (!h1Match) return src;
+  if (h1Match[1].trim() !== title) return src;
+
+  const start = h1Match.index ?? 0;
+  const stripped = body.slice(0, start) + body.slice(start + h1Match[0].length);
+  return src.slice(0, fmMatch[0].length) + stripped.replace(/^\n+/, "\n");
+}
+
 function convertAdmonitions(src) {
   // Match :::<type> [optional title]\n…\n:::
   return src.replace(
@@ -106,6 +131,7 @@ async function migrateFile(srcPath) {
   content = dropSiteImports(content);
   content = convertAdmonitions(content);
   content = relabelDotCodeBlocks(content);
+  content = dropDuplicateH1(content);
 
   await writeFile(dstPath, content, "utf8");
   return { srcPath, dstPath, rel };

@@ -42,7 +42,7 @@ export function Hero() {
             <Button href="/guide/getting-started" variant="primary">
               Get Started
             </Button>
-            <Button href="/guide/typed-and-reactive" variant="secondary">
+            <Button href="/typed-and-reactive" variant="secondary">
               Typed & Reactive →
             </Button>
             <Button

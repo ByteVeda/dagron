@@ -3,8 +3,6 @@ title: Resource Scheduling
 description: Schedule DAG tasks with GPU, CPU, and memory constraints using dagron's resource-aware executors.
 ---
 
-# Resource Scheduling
-
 Many real-world pipelines require access to scarce physical resources -- GPUs for model training, memory for large datasets, or CPU slots for compute-heavy transforms. dagron's resource scheduling system lets you declare per-node requirements and execute the DAG with a scheduler that respects capacity constraints at all times.
 
 The scheduler dispatches nodes in **bottom-level priority order** (longest-path-to-sink first), so the critical path gets resources before less important branches.

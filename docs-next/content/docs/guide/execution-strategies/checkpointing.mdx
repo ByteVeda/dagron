@@ -3,8 +3,6 @@ title: Checkpointing
 description: Save execution progress to disk and resume after failures — CheckpointExecutor for fault-tolerant, resumable DAG pipelines.
 ---
 
-# Checkpointing
-
 Long-running pipelines fail. Networks drop, machines reboot, dependencies crash.
 Without checkpointing, a failure at step 95 of 100 means re-running all 95
 successful steps. dagron's [`CheckpointExecutor`](/api/execution/checkpoint) saves

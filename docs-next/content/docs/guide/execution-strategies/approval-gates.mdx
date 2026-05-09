@@ -3,8 +3,6 @@ title: Approval Gates
 description: Pause DAG execution at human-in-the-loop gates that wait for explicit approval or rejection.
 ---
 
-# Approval Gates
-
 Production pipelines often need a human checkpoint before proceeding. dagron's **approval gates** let you pause execution at specific nodes until an operator explicitly approves or rejects the step. This is useful for deployment sign-offs, data quality reviews, compliance checks, and any workflow that requires human judgment.
 
 Gates are **execution-time concerns**, not graph structure. The DAG itself stays pure; gates are attached via a `GateController` that the executor consults at runtime.

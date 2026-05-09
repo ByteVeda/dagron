@@ -3,8 +3,6 @@ title: Templates
 description: Create parameterized DAG templates with placeholder expansion for reusable pipeline patterns.
 ---
 
-# Templates
-
 Many organizations run the same pipeline structure against different environments, datasets, or configurations. Instead of building a separate DAG for each variant, dagron lets you define a **DAGTemplate** with `{{placeholder}}` syntax and render concrete DAGs by supplying parameter values.
 
 Templates enforce type safety and support custom validators, so invalid parameter combinations are caught before the graph is ever built.

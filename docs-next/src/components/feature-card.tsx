@@ -28,7 +28,7 @@ export function FeatureCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-fd-border bg-fd-card p-5",
+        "flex h-full flex-col rounded-lg border border-fd-border bg-fd-card p-5",
         "transition-all duration-200 hover:border-fd-primary hover:shadow-md",
         className,
       )}
@@ -37,7 +37,7 @@ export function FeatureCard({
         {icon ? <div className="text-2xl leading-none">{icon}</div> : null}
         <h3 className="text-base font-semibold text-fd-foreground">{title}</h3>
       </div>
-      <p className="text-sm text-fd-muted-foreground mb-3 leading-relaxed">
+      <p className="text-sm text-fd-muted-foreground mb-2 leading-relaxed">
         {description}
       </p>
       {(guideHref || apiHref) && (

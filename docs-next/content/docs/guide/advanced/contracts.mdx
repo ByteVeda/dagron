@@ -3,8 +3,6 @@ title: Contracts
 description: Enforce type contracts across DAG edges to catch mismatches before execution.
 ---
 
-# Contracts
-
 When DAGs grow large, it becomes easy for the output type of one node to drift from what a downstream node expects. dagron's **contract system** lets you declare input and output types for each node and validate them at build time -- before any task runs. This catches type mismatches early, similar to how a compiler checks function signatures.
 
 <DagDiagram

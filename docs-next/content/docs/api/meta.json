@@ -1,5 +1,12 @@
 {
   "title": "API Reference",
   "root": true,
-  "pages": ["core", "execution", "observability", "analysis", "utilities"]
+  "pages": [
+    "index",
+    "core",
+    "execution",
+    "observability",
+    "analysis",
+    "utilities"
+  ]
 }

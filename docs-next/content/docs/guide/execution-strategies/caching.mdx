@@ -3,8 +3,6 @@ title: Caching
 description: Content-addressable Merkle-tree caching for cross-run DAG execution with dagron.
 ---
 
-# Caching
-
 dagron's caching system provides **content-addressable Merkle-tree caching** for DAG execution results. When you re-execute a pipeline, nodes whose inputs have not changed return their cached result instantly -- no recomputation needed. This is conceptually similar to how build systems like Bazel and Nix work: change any upstream node and all downstream cache keys automatically invalidate.
 
 <DagDiagram

@@ -3,8 +3,6 @@ title: Incremental Execution
 description: Re-execute only what changed — dirty sets, early cutoff, and the IncrementalExecutor for efficient recomputation.
 ---
 
-# Incremental Execution
-
 When a small part of your input changes, you should not have to re-run the entire
 pipeline. dagron's **incremental execution** engine tracks which nodes are
 affected by a change, re-executes only those nodes, and applies **early cutoff**

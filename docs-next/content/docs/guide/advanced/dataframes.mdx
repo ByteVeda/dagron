@@ -3,8 +3,6 @@ title: DataFrames
 description: Validate pandas and polars DataFrames at DAG edge boundaries with schema definitions.
 ---
 
-# DataFrames
-
 Data pipelines frequently pass DataFrames between nodes. A missing column, a wrong dtype, or an unexpectedly empty table can cascade through the pipeline and produce silent corruption. dagron's DataFrame integration lets you define **schemas** at edge boundaries and validate DataFrames automatically -- catching issues at the source instead of downstream.
 
 The system works with both **pandas** and **polars** DataFrames. No additional dependencies are required beyond what you already use.

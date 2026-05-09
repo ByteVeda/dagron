@@ -3,8 +3,6 @@ title: "Conditional Execution"
 description: "API reference for ConditionalDAGBuilder, ConditionalEdge, and ConditionalExecutor — predicate-gated edges that skip branches at runtime."
 ---
 
-# Conditional Execution
-
 The conditional execution module allows edges in your DAG to carry predicate
 functions. At runtime, the executor evaluates each condition before traversing
 the edge. If the condition returns `False`, the downstream node (and its

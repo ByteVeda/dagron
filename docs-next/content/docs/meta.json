@@ -1,4 +1,4 @@
 {
   "title": "dagron",
-  "pages": ["index", "guide", "api"]
+  "pages": ["index", "guide", "typed-and-reactive", "api"]
 }

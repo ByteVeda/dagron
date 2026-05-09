@@ -3,8 +3,6 @@ title: Versioning
 description: Track DAG mutations with an append-only log, time-travel to any historical version, diff changes, and fork branches.
 ---
 
-# Versioning
-
 As pipelines evolve, you often need to answer questions like "What did this DAG look like last week?" or "What changed between version 12 and version 15?". dagron's `VersionedDAG` wraps a standard DAG with an **append-only mutation log** that records every structural change. You can time-travel to any historical version, diff any two versions, and fork independent branches from any point.
 
 <DagDiagram

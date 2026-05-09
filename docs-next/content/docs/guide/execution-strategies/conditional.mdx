@@ -3,8 +3,6 @@ title: Conditional Execution
 description: Gate DAG branches with runtime predicates — skip nodes dynamically based on upstream results using ConditionalDAGBuilder and ConditionalExecutor.
 ---
 
-# Conditional Execution
-
 Not every branch in a pipeline should always run. Sometimes you want to skip
 expensive model training if validation fails, route data to different processors
 based on its type, or gate a deployment step on quality metrics. dagron's
