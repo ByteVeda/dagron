@@ -1,0 +1,324 @@
+---
+title: Tracing
+description: API reference for dagron's execution tracing system — record, query, and export structured timeline events from DAG execution.
+---
+
+# Tracing
+
+The tracing module provides a structured timeline log of every event that occurs
+during DAG execution. Traces capture node starts, completions, failures, gate
+interactions, resource acquisitions, and cache events. You can export traces as
+JSON or in Chrome Tracing format for visualization in `chrome://tracing`.
+
+For a higher-level introduction, see the [Tracing & Profiling](/guide/observability/tracing-profiling)
+guide.
+
+```python
+from dagron.execution.tracing import ExecutionTrace, TraceEvent, TraceEventType
+```
+
+---
+
+## TraceEventType
+
+<ApiSignature name="TraceEventType" signature={`class TraceEventType(Enum):
+    EXECUTION_STARTED = "execution_started"
+    STEP_STARTED = "step_started"
+    NODE_STARTED = "node_started"
+    NODE_COMPLETED = "node_completed"
+    NODE_FAILED = "node_failed"
+    NODE_SKIPPED = "node_skipped"
+    NODE_TIMED_OUT = "node_timed_out"
+    NODE_CANCELLED = "node_cancelled"
+    STEP_COMPLETED = "step_completed"
+    EXECUTION_COMPLETED = "execution_completed"
+    NODE_GATE_WAITING = "node_gate_waiting"
+    NODE_GATE_RESOLVED = "node_gate_resolved"
+    RESOURCE_ACQUIRED = "resource_acquired"
+    RESOURCE_RELEASED = "resource_released"
+    NODE_CACHE_HIT = "node_cache_hit"
+    NODE_CACHE_MISS = "node_cache_miss"`} />
+
+An enumeration of all event types that can be recorded during DAG execution.
+Each value corresponds to a distinct lifecycle moment.
+
+### Event categories
+
+| Category | Events | Description |
+|----------|--------|-------------|
+| **Execution** | `EXECUTION_STARTED`, `EXECUTION_COMPLETED` | Overall execution boundaries. |
+| **Step** | `STEP_STARTED`, `STEP_COMPLETED` | Topological level boundaries within execution. |
+| **Node lifecycle** | `NODE_STARTED`, `NODE_COMPLETED`, `NODE_FAILED`, `NODE_SKIPPED`, `NODE_TIMED_OUT`, `NODE_CANCELLED` | Individual node state transitions. |
+| **Gates** | `NODE_GATE_WAITING`, `NODE_GATE_RESOLVED` | Approval gate interactions. See [Gates](/api/execution/execution). |
+| **Resources** | `RESOURCE_ACQUIRED`, `RESOURCE_RELEASED` | Resource pool acquisition and release. |
+| **Cache** | `NODE_CACHE_HIT`, `NODE_CACHE_MISS` | Content-addressable cache interactions. |
+
+```python
+# Check event type
+event = trace.events[0]
+if event.event_type == TraceEventType.NODE_FAILED:
+    print(f"Node {event.node_name} failed: {event.error}")
+```
+
+---
+
+## TraceEvent
+
+<ApiSignature name="TraceEvent" signature={`@dataclass
+class TraceEvent:
+    event_type: TraceEventType
+    timestamp: float
+    node_name: str | None = None
+    step_index: int | None = None
+    duration: float | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)`} />
+
+A single trace event captured during execution. Each event has a type, a
+monotonic timestamp relative to the start of recording, and optional fields
+that vary by event type.
+
+<ParamTable params={[
+  {name: "event_type", type: "TraceEventType", description: "The kind of event that occurred."},
+  {name: "timestamp", type: "float", description: "Seconds elapsed since the first event in this trace (monotonic clock)."},
+  {name: "node_name", type: "str | None", default: "None", description: "Name of the node this event relates to, if applicable."},
+  {name: "step_index", type: "int | None", default: "None", description: "Topological level index for step events."},
+  {name: "duration", type: "float | None", default: "None", description: "Duration in seconds for completion events."},
+  {name: "error", type: "str | None", default: "None", description: "Error message for failure events."},
+  {name: "metadata", type: "dict[str, Any]", default: "{}", description: "Arbitrary metadata attached by hooks or plugins."},
+]} />
+
+```python
+for event in trace.events:
+    if event.node_name:
+        print(f"[{event.timestamp:.4f}s] {event.event_type.value}: {event.node_name}")
+        if event.duration:
+            print(f"  Duration: {event.duration:.4f}s")
+        if event.error:
+            print(f"  Error: {event.error}")
+```
+
+---
+
+## ExecutionTrace
+
+<ApiSignature name="ExecutionTrace" signature={`class ExecutionTrace:
+    def __init__(self) -> None: ...`} />
+
+A structured timeline log that collects events during DAG execution. The
+executor creates an `ExecutionTrace` automatically when tracing is enabled.
+You can also create one manually for custom recording scenarios.
+
+The trace uses `time.monotonic()` internally, so all timestamps are relative
+to the first recorded event and monotonically increasing.
+
+```python
+from dagron.execution.tracing import ExecutionTrace, TraceEventType
+
+trace = ExecutionTrace()
+trace.record(TraceEventType.EXECUTION_STARTED)
+trace.record(TraceEventType.NODE_STARTED, node_name="extract")
+trace.record(TraceEventType.NODE_COMPLETED, node_name="extract", duration=0.45)
+trace.record(TraceEventType.EXECUTION_COMPLETED)
+
+print(len(trace.events))  # 4
+```
+
+### Methods
+
+---
+
+#### ExecutionTrace.record
+
+<ApiSignature name="ExecutionTrace.record" signature={`def record(
+    self,
+    event_type: TraceEventType,
+    *,
+    node_name: str | None = None,
+    step_index: int | None = None,
+    duration: float | None = None,
+    error: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None`} />
+
+Record a trace event. The timestamp is captured automatically using
+`time.monotonic()` relative to the first recorded event.
+
+<ParamTable params={[
+  {name: "event_type", type: "TraceEventType", description: "The type of event to record."},
+  {name: "node_name", type: "str | None", default: "None", description: "Name of the relevant node."},
+  {name: "step_index", type: "int | None", default: "None", description: "Topological level index (for step events)."},
+  {name: "duration", type: "float | None", default: "None", description: "Duration in seconds (for completion events)."},
+  {name: "error", type: "str | None", default: "None", description: "Error message (for failure events)."},
+  {name: "metadata", type: "dict[str, Any] | None", default: "None", description: "Arbitrary metadata dict. Stored as empty dict if None."},
+]} />
+
+```python
+trace.record(
+    TraceEventType.NODE_FAILED,
+    node_name="transform",
+    error="ValueError: missing column 'id'",
+    metadata={"retry_count": 2},
+)
+```
+
+---
+
+#### ExecutionTrace.events
+
+<ApiSignature name="ExecutionTrace.events" signature={`@property
+def events(self) -> list[TraceEvent]`} />
+
+Returns a copy of all recorded events in chronological order.
+
+**Returns:** `list[TraceEvent]` -- All events recorded so far.
+
+```python
+for event in trace.events:
+    print(f"{event.event_type.value} at {event.timestamp:.4f}s")
+```
+
+---
+
+#### ExecutionTrace.events_for_node
+
+<ApiSignature name="ExecutionTrace.events_for_node" signature={`def events_for_node(self, name: str) -> list[TraceEvent]`} />
+
+Filter events for a specific node. Returns only events where `node_name`
+matches the given name.
+
+<ParamTable params={[
+  {name: "name", type: "str", description: "The node name to filter by."},
+]} />
+
+**Returns:** `list[TraceEvent]` -- Events associated with the named node.
+
+```python
+extract_events = trace.events_for_node("extract")
+for e in extract_events:
+    print(f"  {e.event_type.value}: {e.timestamp:.4f}s")
+# NODE_STARTED: 0.0001s
+# NODE_COMPLETED: 0.4502s
+```
+
+---
+
+#### ExecutionTrace.to_json
+
+<ApiSignature name="ExecutionTrace.to_json" signature={`def to_json(self) -> str`} />
+
+Export the trace as a JSON string. Each event becomes a JSON object with
+`event_type`, `timestamp`, and any non-None optional fields.
+
+**Returns:** `str` -- Pretty-printed JSON array of event objects.
+
+```python
+import json
+
+json_str = trace.to_json()
+events = json.loads(json_str)
+print(events[0])
+# {"event_type": "execution_started", "timestamp": 0.0}
+```
+
+---
+
+#### ExecutionTrace.to_chrome_trace
+
+<ApiSignature name="ExecutionTrace.to_chrome_trace" signature={`def to_chrome_trace(self) -> str`} />
+
+Export the trace in [Chrome Tracing format](https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview).
+The output is a JSON string compatible with `chrome://tracing` or
+[Perfetto](https://ui.perfetto.dev/).
+
+Node executions become Duration events (`B`/`E` pairs). Each unique node
+gets its own thread ID for visual separation. Timestamps are converted
+to microseconds.
+
+**Returns:** `str` -- Chrome Tracing JSON string.
+
+```python
+# Write the trace to a file and open in chrome://tracing
+chrome_json = trace.to_chrome_trace()
+with open("trace.json", "w") as f:
+    f.write(chrome_json)
+```
+
+---
+
+#### ExecutionTrace.summary
+
+<ApiSignature name="ExecutionTrace.summary" signature={`def summary(self) -> str`} />
+
+Return a human-readable summary of the trace, including total event count,
+unique node count, and counts by outcome (completed, failed, skipped,
+timed out, cancelled).
+
+**Returns:** `str` -- Multi-line summary string.
+
+```python
+print(trace.summary())
+# Execution Trace Summary
+#   Total events: 14
+#   Unique nodes: 5
+#   Completed: 4
+#   Failed: 1
+#   Skipped: 0
+#   Timed out: 0
+#   Cancelled: 0
+#   Duration: 1.2345s
+```
+
+---
+
+## Complete example
+
+```python
+import dagron
+from dagron.execution.tracing import ExecutionTrace, TraceEventType
+
+# Build a DAG
+dag = (
+    dagron.DAG.builder()
+    .add_edge("extract", "transform")
+    .add_edge("transform", "load")
+    .build()
+)
+
+# Execute with tracing enabled
+executor = dagron.DAGExecutor(dag, trace=True)
+tasks = {
+    "extract": lambda: [1, 2, 3],
+    "transform": lambda: [2, 4, 6],
+    "load": lambda: "done",
+}
+result = executor.execute(tasks)
+
+# Access the trace from the result
+trace = result.trace
+
+# Inspect events
+print(trace.summary())
+
+# Find slow nodes
+for event in trace.events:
+    if event.event_type == TraceEventType.NODE_COMPLETED and event.duration:
+        if event.duration > 1.0:
+            print(f"Slow node: {event.node_name} ({event.duration:.2f}s)")
+
+# Export for Chrome Tracing visualization
+with open("pipeline_trace.json", "w") as f:
+    f.write(trace.to_chrome_trace())
+
+# Export as plain JSON for custom analysis
+with open("pipeline_events.json", "w") as f:
+    f.write(trace.to_json())
+```
+
+---
+
+## See also
+
+- [Profiling](/api/observability/profiling) -- post-execution performance analysis built on trace data.
+- [Tracing & Profiling guide](/guide/observability/tracing-profiling) -- walkthrough of tracing and profiling workflows.
+- [Execution](/api/execution/execution) -- `DAGExecutor` and the `trace` parameter.

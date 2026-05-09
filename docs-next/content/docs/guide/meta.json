@@ -1,0 +1,16 @@
+{
+  "title": "Guide",
+  "root": true,
+  "pages": [
+    "why-dagron",
+    "getting-started",
+    "typed-and-reactive",
+    "benchmarks",
+    "cookbook",
+    "core-concepts",
+    "execution-strategies",
+    "observability",
+    "advanced",
+    "architecture"
+  ]
+}

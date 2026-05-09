@@ -1,0 +1,863 @@
+---
+title: "Core — DAG, NodeId, GraphStats"
+description: "Complete API reference for the DAG class, NodeId, GraphStats, GraphDiff, ReachabilityIndex, and ExecutionPlan."
+---
+
+# Core — DAG, NodeId, GraphStats
+
+The core module provides the foundational graph data structure that powers every
+feature in dagron. The `DAG` class contains approximately 78 methods spanning
+construction, inspection, traversal, scheduling, transforms, serialization, and
+more. The underlying graph lives in Rust for zero-copy speed, exposed to Python
+via PyO3.
+
+See the [Building DAGs](/guide/core-concepts/building-dags) guide for usage patterns and
+the [Inspecting Graphs](/guide/core-concepts/inspecting-graphs) guide for analysis
+workflows.
+
+---
+
+## DAG
+
+<ApiSignature name="DAG" signature={`class DAG()`} />
+
+The central directed acyclic graph. Create an empty graph with `DAG()` or use
+the fluent [DAGBuilder](/api/core/builder) via `DAG.builder()`.
+
+```python
+import dagron
+
+# Empty graph, then mutate
+dag = dagron.DAG()
+dag.add_node("a")
+dag.add_node("b")
+dag.add_edge("a", "b")
+
+# Or use the builder
+dag = dagron.DAG.builder().add_node("a").add_node("b").add_edge("a", "b").build()
+```
+
+---
+
+### Construction
+
+<ApiSignature name="DAG.builder" signature={`@staticmethod
+def builder() -> DAGBuilder`} />
+
+Return a new [DAGBuilder](/api/core/builder) instance for fluent graph
+construction. The builder validates the graph when `.build()` is called.
+
+<ApiSignature name="DAG.add_node" signature={`def add_node(
+    name: str,
+    payload: Any = None,
+    metadata: dict | None = None,
+) -> NodeId`} />
+
+Add a node to the graph. Returns a `NodeId` handle. Raises `DuplicateNodeError`
+if a node with the same name already exists.
+
+<ParamTable params={[
+  {name: "name", type: "str", description: "Unique name for the node."},
+  {name: "payload", type: "Any", default: "None", description: "Arbitrary Python object attached to the node."},
+  {name: "metadata", type: "dict | None", default: "None", description: "Optional metadata dictionary (labels, tags, etc.)."},
+]} />
+
+<ApiSignature name="DAG.add_nodes" signature={`def add_nodes(
+    nodes: list[str | tuple[str, Any] | tuple[str, Any, dict]],
+) -> list[NodeId]`} />
+
+Bulk-add multiple nodes. Each element can be a bare name string, a
+`(name, payload)` tuple, or a `(name, payload, metadata)` tuple.
+
+<ParamTable params={[
+  {name: "nodes", type: "list", description: "List of node specifications to add."},
+]} />
+
+<ApiSignature name="DAG.add_edge" signature={`def add_edge(
+    from_node: str,
+    to_node: str,
+    weight: float | None = None,
+    label: str | None = None,
+) -> None`} />
+
+Add a directed edge from `from_node` to `to_node`. Raises `NodeNotFoundError`
+if either node does not exist, and `CycleError` if the edge would create a
+cycle.
+
+<ParamTable params={[
+  {name: "from_node", type: "str", description: "Name of the source node."},
+  {name: "to_node", type: "str", description: "Name of the target node."},
+  {name: "weight", type: "float | None", default: "None", description: "Optional numeric weight for cost-aware scheduling."},
+  {name: "label", type: "str | None", default: "None", description: "Optional label for visualization and debugging."},
+]} />
+
+<ApiSignature name="DAG.add_edges" signature={`def add_edges(
+    edges: list[tuple[str, str] | tuple[str, str, float] | tuple[str, str, float, str]],
+) -> None`} />
+
+Bulk-add multiple edges. Each element is a tuple of `(from, to)`,
+`(from, to, weight)`, or `(from, to, weight, label)`.
+
+<ParamTable params={[
+  {name: "edges", type: "list", description: "List of edge tuples to add."},
+]} />
+
+<ApiSignature name="DAG.remove_node" signature={`def remove_node(name: str) -> None`} />
+
+Remove a node and all edges connected to it. Raises `NodeNotFoundError` if the
+node does not exist.
+
+<ParamTable params={[
+  {name: "name", type: "str", description: "Name of the node to remove."},
+]} />
+
+<ApiSignature name="DAG.remove_edge" signature={`def remove_edge(from_node: str, to_node: str) -> None`} />
+
+Remove a directed edge. Raises `EdgeNotFoundError` if the edge does not exist.
+
+<ParamTable params={[
+  {name: "from_node", type: "str", description: "Name of the source node."},
+  {name: "to_node", type: "str", description: "Name of the target node."},
+]} />
+
+---
+
+### Inspection
+
+<ApiSignature name="DAG.has_node" signature={`def has_node(name: str) -> bool`} />
+
+Return `True` if a node with the given name exists.
+
+<ApiSignature name="DAG.has_edge" signature={`def has_edge(from_node: str, to_node: str) -> bool`} />
+
+Return `True` if a directed edge exists between the two nodes.
+
+<ApiSignature name="DAG.node_count" signature={`def node_count() -> int`} />
+
+Return the total number of nodes in the graph.
+
+<ApiSignature name="DAG.edge_count" signature={`def edge_count() -> int`} />
+
+Return the total number of edges in the graph.
+
+<ApiSignature name="DAG.get_payload" signature={`def get_payload(name: str) -> Any`} />
+
+Return the payload attached to a node. Raises `NodeNotFoundError` if the node
+does not exist.
+
+<ApiSignature name="DAG.set_payload" signature={`def set_payload(name: str, payload: Any) -> None`} />
+
+Replace the payload on an existing node.
+
+<ApiSignature name="DAG.get_metadata" signature={`def get_metadata(name: str) -> dict | None`} />
+
+Return the metadata dictionary for a node, or `None` if no metadata was set.
+
+<ApiSignature name="DAG.set_metadata" signature={`def set_metadata(name: str, metadata: dict) -> None`} />
+
+Replace the metadata on an existing node.
+
+<ApiSignature name="DAG.predecessors" signature={`def predecessors(name: str) -> list[NodeId]`} />
+
+Return the direct predecessors (parents) of a node.
+
+<ApiSignature name="DAG.successors" signature={`def successors(name: str) -> list[NodeId]`} />
+
+Return the direct successors (children) of a node.
+
+<ApiSignature name="DAG.ancestors" signature={`def ancestors(name: str) -> list[NodeId]`} />
+
+Return all transitive predecessors of a node (the full upstream lineage).
+
+<ApiSignature name="DAG.descendants" signature={`def descendants(name: str) -> list[NodeId]`} />
+
+Return all transitive successors of a node (the full downstream lineage).
+
+<ApiSignature name="DAG.in_degree" signature={`def in_degree(name: str) -> int`} />
+
+Return the number of incoming edges to a node.
+
+<ApiSignature name="DAG.out_degree" signature={`def out_degree(name: str) -> int`} />
+
+Return the number of outgoing edges from a node.
+
+<ApiSignature name="DAG.roots" signature={`def roots() -> list[NodeId]`} />
+
+Return all root nodes (nodes with no predecessors).
+
+<ApiSignature name="DAG.leaves" signature={`def leaves() -> list[NodeId]`} />
+
+Return all leaf nodes (nodes with no successors).
+
+<ApiSignature name="DAG.nodes" signature={`def nodes() -> list[NodeId]`} />
+
+Return all nodes in the graph as a list of `NodeId` objects.
+
+```python
+dag = dagron.DAG()
+dag.add_node("extract", payload={"source": "api"})
+dag.add_node("transform")
+dag.add_edge("extract", "transform")
+
+print(dag.has_node("extract"))         # True
+print(dag.predecessors("transform"))   # [NodeId("extract")]
+print(dag.get_payload("extract"))      # {"source": "api"}
+print(dag.roots())                     # [NodeId("extract")]
+print(dag.leaves())                    # [NodeId("transform")]
+```
+
+---
+
+### Iterators
+
+Lazy iterator variants that yield items one at a time instead of building a full
+list in memory. Useful for very large graphs.
+
+<ApiSignature name="DAG.iter_nodes" signature={`def iter_nodes() -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_roots" signature={`def iter_roots() -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_leaves" signature={`def iter_leaves() -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_ancestors" signature={`def iter_ancestors(name: str) -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_descendants" signature={`def iter_descendants(name: str) -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_topological_sort" signature={`def iter_topological_sort() -> Iterator[NodeId]`} />
+
+<ApiSignature name="DAG.iter_topological_levels" signature={`def iter_topological_levels() -> Iterator[list[NodeId]]`} />
+
+```python
+for node in dag.iter_topological_sort():
+    print(node.name)
+
+for level in dag.iter_topological_levels():
+    print([n.name for n in level])
+```
+
+---
+
+### Topological Sorting
+
+<ApiSignature name="DAG.topological_sort" signature={`def topological_sort() -> list[NodeId]`} />
+
+Return a topological ordering of all nodes using Kahn's algorithm. The ordering
+is deterministic (stable sort by insertion order).
+
+<ApiSignature name="DAG.topological_sort_dfs" signature={`def topological_sort_dfs() -> list[NodeId]`} />
+
+Return a topological ordering computed via depth-first search. May produce a
+different valid ordering than the Kahn-based `topological_sort()`.
+
+<ApiSignature name="DAG.topological_levels" signature={`def topological_levels() -> list[list[NodeId]]`} />
+
+Group nodes into levels where all nodes at the same level can execute in
+parallel (all predecessors are in earlier levels).
+
+<ApiSignature name="DAG.all_topological_orderings" signature={`def all_topological_orderings(
+    limit: int | None = None,
+) -> list[list[NodeId]]`} />
+
+Enumerate all valid topological orderings. Use `limit` to cap the output for
+large graphs (the number of orderings can be exponential).
+
+<ParamTable params={[
+  {name: "limit", type: "int | None", default: "None", description: "Maximum number of orderings to return. None means all."},
+]} />
+
+<ApiSignature name="DAG.topological_sort_priority" signature={`def topological_sort_priority(
+    priorities: dict[str, float] | None = None,
+) -> list[NodeId]`} />
+
+Return a topological ordering that respects priority hints. Nodes with higher
+priority values are scheduled earlier when topologically valid.
+
+<ParamTable params={[
+  {name: "priorities", type: "dict[str, float] | None", default: "None", description: "Map of node name to priority value. Higher is earlier."},
+]} />
+
+<ApiSignature name="DAG.topological_levels_priority" signature={`def topological_levels_priority(
+    priorities: dict[str, float] | None = None,
+) -> list[list[NodeId]]`} />
+
+Like `topological_levels()`, but nodes within each level are sorted by priority.
+
+<ParamTable params={[
+  {name: "priorities", type: "dict[str, float] | None", default: "None", description: "Map of node name to priority value. Higher is earlier."},
+]} />
+
+---
+
+### Paths
+
+<ApiSignature name="DAG.shortest_path" signature={`def shortest_path(
+    from_node: str,
+    to_node: str,
+) -> list[NodeId] | None`} />
+
+Return the shortest path (fewest edges) between two nodes, or `None` if no path
+exists.
+
+<ParamTable params={[
+  {name: "from_node", type: "str", description: "Starting node."},
+  {name: "to_node", type: "str", description: "Target node."},
+]} />
+
+<ApiSignature name="DAG.longest_path" signature={`def longest_path(
+    from_node: str,
+    to_node: str,
+    costs: dict[str, float] | None = None,
+) -> tuple[list[NodeId], float] | None`} />
+
+Return the longest path and its total cost between two nodes, or `None` if no
+path exists. If `costs` is provided, edge/node costs are summed; otherwise every
+node has cost 1.
+
+<ParamTable params={[
+  {name: "from_node", type: "str", description: "Starting node."},
+  {name: "to_node", type: "str", description: "Target node."},
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Optional per-node cost map."},
+]} />
+
+<ApiSignature name="DAG.all_paths" signature={`def all_paths(
+    from_node: str,
+    to_node: str,
+    limit: int | None = None,
+) -> list[list[NodeId]]`} />
+
+Enumerate all directed paths between two nodes.
+
+<ParamTable params={[
+  {name: "from_node", type: "str", description: "Starting node."},
+  {name: "to_node", type: "str", description: "Target node."},
+  {name: "limit", type: "int | None", default: "None", description: "Maximum number of paths to return."},
+]} />
+
+```python
+path = dag.shortest_path("extract", "load")
+print([n.name for n in path])  # ["extract", "transform", "load"]
+```
+
+---
+
+### Scheduling
+
+<ApiSignature name="DAG.execution_plan" signature={`def execution_plan(
+    costs: dict[str, float] | None = None,
+) -> ExecutionPlan`} />
+
+Compute an optimal execution plan (topological-level schedule) with unlimited
+parallelism. See [ExecutionPlan](#executionplan) below.
+
+<ParamTable params={[
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node execution cost estimates."},
+]} />
+
+<ApiSignature name="DAG.execution_plan_constrained" signature={`def execution_plan_constrained(
+    max_workers: int,
+    costs: dict[str, float] | None = None,
+) -> ExecutionPlan`} />
+
+Compute an execution plan constrained to a fixed number of workers.
+
+<ParamTable params={[
+  {name: "max_workers", type: "int", description: "Maximum number of concurrent workers."},
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node execution cost estimates."},
+]} />
+
+<ApiSignature name="DAG.critical_path" signature={`def critical_path(
+    costs: dict[str, float] | None = None,
+) -> tuple[list[NodeId], float]`} />
+
+Return the critical path (longest weighted path through the graph) and its total
+cost. This determines the theoretical minimum makespan.
+
+<ParamTable params={[
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node execution cost estimates."},
+]} />
+
+<ApiSignature name="DAG.bottom_levels" signature={`def bottom_levels(
+    costs: dict[str, float] | None = None,
+) -> dict[str, float]`} />
+
+Return the bottom-level priority of each node (the longest path from that node
+to any leaf). Used internally for scheduling heuristics.
+
+<ParamTable params={[
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node execution cost estimates."},
+]} />
+
+```python
+costs = {"extract": 2.0, "transform": 5.0, "load": 1.0}
+path, total = dag.critical_path(costs)
+print([n.name for n in path], total)  # ["extract", "transform", "load"], 8.0
+```
+
+---
+
+### Transforms
+
+<ApiSignature name="DAG.reverse" signature={`def reverse() -> DAG`} />
+
+Return a new DAG with all edge directions reversed.
+
+<ApiSignature name="DAG.filter" signature={`def filter(predicate: Callable[[str], bool]) -> DAG`} />
+
+Return a new DAG containing only nodes for which `predicate(name)` returns
+`True`. Edges between remaining nodes are preserved.
+
+<ParamTable params={[
+  {name: "predicate", type: "Callable[[str], bool]", description: "Function that receives a node name and returns True to keep."},
+]} />
+
+<ApiSignature name="DAG.merge" signature={`def merge(
+    other: DAG,
+    conflict: str = "keep_first",
+    conflict_resolver: Callable | None = None,
+) -> DAG`} />
+
+Merge another DAG into this one. When both DAGs share a node name, `conflict`
+determines the behavior: `"keep_first"`, `"keep_second"`, `"error"`, or use a
+custom `conflict_resolver` callable.
+
+<ParamTable params={[
+  {name: "other", type: "DAG", description: "The DAG to merge in."},
+  {name: "conflict", type: "str", default: '"keep_first"', description: 'Conflict strategy: "keep_first", "keep_second", or "error".'},
+  {name: "conflict_resolver", type: "Callable | None", default: "None", description: "Custom callable(name, payload_a, payload_b) -> payload for resolving conflicts."},
+]} />
+
+<ApiSignature name="DAG.collapse" signature={`def collapse(
+    nodes: list[str],
+    collapsed_name: str,
+    payload: Any = None,
+) -> DAG`} />
+
+Collapse multiple nodes into a single node. Edges are rewired to the collapsed
+node.
+
+<ParamTable params={[
+  {name: "nodes", type: "list[str]", description: "Names of nodes to collapse."},
+  {name: "collapsed_name", type: "str", description: "Name for the new collapsed node."},
+  {name: "payload", type: "Any", default: "None", description: "Optional payload for the collapsed node."},
+]} />
+
+<ApiSignature name="DAG.transitive_reduction" signature={`def transitive_reduction() -> DAG`} />
+
+Return the transitive reduction: the smallest DAG with the same reachability
+relation. Removes redundant edges.
+
+<ApiSignature name="DAG.transitive_closure" signature={`def transitive_closure() -> DAG`} />
+
+Return the transitive closure: a DAG with an edge `(u, v)` for every pair of
+nodes where `u` can reach `v`.
+
+<ApiSignature name="DAG.snapshot" signature={`def snapshot() -> DAG`} />
+
+Return a deep copy of the DAG at this point in time.
+
+<ApiSignature name="DAG.dominator_tree" signature={`def dominator_tree(root: str) -> list[tuple[str, str]]`} />
+
+Compute the dominator tree rooted at the given node. Returns a list of
+`(dominator, dominated)` edge pairs.
+
+<ParamTable params={[
+  {name: "root", type: "str", description: "The root node for the dominator tree computation."},
+]} />
+
+```python
+reduced = dag.transitive_reduction()
+filtered = dag.filter(lambda name: name.startswith("transform"))
+merged = dag1.merge(dag2, conflict="keep_second")
+```
+
+---
+
+### Subgraph
+
+<ApiSignature name="DAG.subgraph" signature={`def subgraph(nodes: list[str]) -> DAG`} />
+
+Extract a subgraph containing only the specified nodes and edges between them.
+
+<ParamTable params={[
+  {name: "nodes", type: "list[str]", description: "Names of nodes to include."},
+]} />
+
+<ApiSignature name="DAG.subgraph_by_depth" signature={`def subgraph_by_depth(
+    root: str,
+    depth: int,
+    direction: str = "both",
+) -> DAG`} />
+
+Extract a subgraph by traversing up to `depth` hops from `root`.
+
+<ParamTable params={[
+  {name: "root", type: "str", description: "Starting node."},
+  {name: "depth", type: "int", description: "Maximum number of hops."},
+  {name: "direction", type: "str", default: '"both"', description: 'Traversal direction: "forward", "backward", or "both".'},
+]} />
+
+---
+
+### Serialization
+
+<ApiSignature name="DAG.to_json" signature={`def to_json(
+    payload_serializer: Callable | None = None,
+) -> str`} />
+
+Serialize the DAG to a JSON string. If nodes carry non-JSON-serializable
+payloads, provide a custom `payload_serializer`.
+
+<ApiSignature name="DAG.from_json" signature={`@classmethod
+def from_json(
+    json_str: str,
+    payload_deserializer: Callable | None = None,
+) -> DAG`} />
+
+Deserialize a DAG from a JSON string.
+
+<ApiSignature name="DAG.to_dot" signature={`def to_dot(
+    node_attrs: Callable | None = None,
+) -> str`} />
+
+Export the graph in Graphviz DOT format.
+
+<ParamTable params={[
+  {name: "node_attrs", type: "Callable | None", default: "None", description: "Optional callable(name) -> dict of DOT attributes per node."},
+]} />
+
+<ApiSignature name="DAG.to_mermaid" signature={`def to_mermaid() -> str`} />
+
+Export the graph as a Mermaid diagram string.
+
+<ApiSignature name="DAG.to_bytes" signature={`def to_bytes(
+    payload_serializer: Callable | None = None,
+) -> bytes`} />
+
+Serialize the DAG to a compact binary format.
+
+<ApiSignature name="DAG.from_bytes" signature={`@classmethod
+def from_bytes(
+    data: bytes,
+    payload_deserializer: Callable | None = None,
+) -> DAG`} />
+
+Deserialize a DAG from binary data.
+
+<ApiSignature name="DAG.save" signature={`def save(
+    path: str,
+    payload_serializer: Callable | None = None,
+) -> None`} />
+
+Save the DAG to a file on disk (binary format).
+
+<ApiSignature name="DAG.load" signature={`@classmethod
+def load(
+    path: str,
+    payload_deserializer: Callable | None = None,
+) -> DAG`} />
+
+Load a DAG from a file on disk.
+
+```python
+# Round-trip through JSON
+json_str = dag.to_json()
+restored = dagron.DAG.from_json(json_str)
+
+# Save / load from disk
+dag.save("pipeline.dagron")
+loaded = dagron.DAG.load("pipeline.dagron")
+
+# Export for visualization
+print(dag.to_mermaid())
+```
+
+See the [Serialization](/guide/core-concepts/serialization) guide for detailed examples.
+
+---
+
+### Matching
+
+<ApiSignature name="DAG.nodes_matching_regex" signature={`def nodes_matching_regex(pattern: str) -> list[NodeId]`} />
+
+Return all nodes whose names match the given regular expression pattern.
+
+<ParamTable params={[
+  {name: "pattern", type: "str", description: "A Python regular expression pattern."},
+]} />
+
+<ApiSignature name="DAG.nodes_matching_glob" signature={`def nodes_matching_glob(pattern: str) -> list[NodeId]`} />
+
+Return all nodes whose names match the given glob pattern (supports `*`, `?`,
+`[...]`).
+
+<ParamTable params={[
+  {name: "pattern", type: "str", description: "A glob pattern."},
+]} />
+
+```python
+transforms = dag.nodes_matching_glob("transform_*")
+etl_nodes = dag.nodes_matching_regex(r"^(extract|transform|load)_\d+$")
+```
+
+---
+
+### Reachability
+
+<ApiSignature name="DAG.build_reachability_index" signature={`def build_reachability_index() -> ReachabilityIndex`} />
+
+Precompute a reachability index for O(1) ancestor/descendant queries. See
+[ReachabilityIndex](#reachabilityindex) below.
+
+<ApiSignature name="DAG.is_ancestor" signature={`def is_ancestor(ancestor: str, descendant: str) -> bool`} />
+
+Return `True` if `ancestor` is a transitive predecessor of `descendant`. This
+performs a graph traversal each time; for repeated queries, use
+`build_reachability_index()`.
+
+<ParamTable params={[
+  {name: "ancestor", type: "str", description: "Potential ancestor node."},
+  {name: "descendant", type: "str", description: "Potential descendant node."},
+]} />
+
+---
+
+### Diffing
+
+<ApiSignature name="DAG.diff" signature={`def diff(other: DAG) -> GraphDiff`} />
+
+Compute a structural diff between this DAG and another. Returns a
+[GraphDiff](#graphdiff) object. See the [Versioning](/guide/advanced/versioning)
+guide for diff workflows.
+
+<ParamTable params={[
+  {name: "other", type: "DAG", description: "The DAG to compare against."},
+]} />
+
+---
+
+### Partitioning
+
+<ApiSignature name="DAG.partition_level_based" signature={`def partition_level_based(
+    k: int,
+    costs: dict[str, float] | None = None,
+) -> PartitionResult`} />
+
+Partition the graph into `k` groups using topological-level-based assignment.
+
+<ApiSignature name="DAG.partition_balanced" signature={`def partition_balanced(
+    k: int,
+    costs: dict[str, float] | None = None,
+) -> PartitionResult`} />
+
+Partition the graph into `k` balanced groups minimizing total cost imbalance.
+
+<ApiSignature name="DAG.partition_communication_min" signature={`def partition_communication_min(
+    k: int,
+    costs: dict[str, float] | None = None,
+    max_iterations: int = 10,
+    max_imbalance: float = 0.3,
+) -> PartitionResult`} />
+
+Partition the graph into `k` groups minimizing inter-partition communication
+(cross-partition edges).
+
+<ParamTable params={[
+  {name: "k", type: "int", description: "Number of partitions."},
+  {name: "costs", type: "dict[str, float] | None", default: "None", description: "Per-node cost map."},
+  {name: "max_iterations", type: "int", default: "10", description: "Maximum Kernighan-Lin refinement iterations."},
+  {name: "max_imbalance", type: "float", default: "0.3", description: "Maximum allowed imbalance ratio."},
+]} />
+
+---
+
+### Incremental
+
+<ApiSignature name="DAG.dirty_set" signature={`def dirty_set(changed: list[str]) -> list[str]`} />
+
+Given a list of changed nodes, return the full set of nodes that need
+re-execution (the changed nodes plus all their downstream descendants).
+
+<ParamTable params={[
+  {name: "changed", type: "list[str]", description: "Node names that have changed."},
+]} />
+
+<ApiSignature name="DAG.change_provenance" signature={`def change_provenance(changed: list[str]) -> dict[str, list[str]]`} />
+
+For each downstream node, return which changed nodes are responsible for
+invalidating it.
+
+<ParamTable params={[
+  {name: "changed", type: "list[str]", description: "Node names that have changed."},
+]} />
+
+See the [Incremental Execution](/api/execution/incremental) API page for the full
+incremental executor.
+
+---
+
+### Validation, Stats, and Cache
+
+<ApiSignature name="DAG.validate" signature={`def validate() -> bool`} />
+
+Validate graph invariants (acyclicity, no orphan edges). Returns `True` if the
+graph is valid. Raises `CycleError` if a cycle is detected.
+
+<ApiSignature name="DAG.stats" signature={`def stats() -> GraphStats`} />
+
+Return a [GraphStats](#graphstats) summary of the graph.
+
+<ApiSignature name="DAG.cache_info" signature={`def cache_info() -> dict`} />
+
+Return information about the internal Rust-side cache (hit/miss counts for
+memoized graph algorithms).
+
+<ApiSignature name="DAG.clear_cache" signature={`def clear_cache() -> None`} />
+
+Clear the internal algorithm cache. The cache is automatically invalidated on
+mutation, but you can force-clear it if needed.
+
+<ApiSignature name="DAG.generation" signature={`@property
+def generation() -> int`} />
+
+A monotonically increasing counter that increments on every mutation. Useful for
+cache invalidation in external systems.
+
+```python
+stats = dag.stats()
+print(f"Nodes: {stats.node_count}, Depth: {stats.depth}, Width: {stats.width}")
+print(f"Generation: {dag.generation}")
+```
+
+---
+
+## NodeId
+
+<ApiSignature name="NodeId" signature={`class NodeId`} />
+
+An opaque handle returned by node-creation methods. Provides a `.name` property
+for accessing the underlying string identifier.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `str` | The unique string name of the node. |
+
+```python
+node_id = dag.add_node("extract")
+print(node_id.name)  # "extract"
+```
+
+---
+
+## GraphStats
+
+<ApiSignature name="GraphStats" signature={`class GraphStats`} />
+
+A read-only summary of graph metrics, returned by `DAG.stats()`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `node_count` | `int` | Total number of nodes. |
+| `edge_count` | `int` | Total number of edges. |
+| `depth` | `int` | Length of the longest path (in edges). |
+| `width` | `int` | Maximum number of nodes at any topological level. |
+| `density` | `float` | Edge density: `edge_count / (node_count * (node_count - 1))`. |
+| `longest_path_length` | `int` | Number of edges in the longest path. |
+| `avg_in_degree` | `float` | Average incoming edges per node. |
+| `avg_out_degree` | `float` | Average outgoing edges per node. |
+| `max_in_degree` | `int` | Highest in-degree of any node. |
+| `max_out_degree` | `int` | Highest out-degree of any node. |
+| `root_count` | `int` | Number of root nodes. |
+| `leaf_count` | `int` | Number of leaf nodes. |
+| `is_weakly_connected` | `bool` | Whether the underlying undirected graph is connected. |
+| `component_count` | `int` | Number of weakly connected components. |
+
+```python
+stats = dag.stats()
+print(f"Density: {stats.density:.4f}")
+print(f"Connected: {stats.is_weakly_connected}")
+print(f"Components: {stats.component_count}")
+```
+
+---
+
+## GraphDiff
+
+<ApiSignature name="GraphDiff" signature={`class GraphDiff`} />
+
+The result of `DAG.diff(other)`. Contains sets of added, removed, and changed
+nodes and edges.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `added_nodes` | `list[str]` | Nodes present in `other` but not `self`. |
+| `removed_nodes` | `list[str]` | Nodes present in `self` but not `other`. |
+| `changed_nodes` | `list[str]` | Nodes with different payloads or metadata. |
+| `added_edges` | `list[tuple[str, str]]` | Edges present in `other` but not `self`. |
+| `removed_edges` | `list[tuple[str, str]]` | Edges present in `self` but not `other`. |
+| `changed_edges` | `list[tuple[str, str]]` | Edges with different weights or labels. |
+
+```python
+diff = dag_v1.diff(dag_v2)
+print(f"Added nodes: {diff.added_nodes}")
+print(f"Removed edges: {diff.removed_edges}")
+```
+
+---
+
+## ReachabilityIndex
+
+<ApiSignature name="ReachabilityIndex" signature={`class ReachabilityIndex`} />
+
+A precomputed index for O(1) reachability queries. Built via
+`DAG.build_reachability_index()`. The index is a snapshot; it does not track
+subsequent mutations to the DAG.
+
+<ApiSignature name="ReachabilityIndex.can_reach" signature={`def can_reach(from_node: str, to_node: str) -> bool`} />
+
+Return `True` if `from_node` can reach `to_node` via directed edges.
+
+<ApiSignature name="ReachabilityIndex.reachable_from" signature={`def reachable_from(node: str) -> list[str]`} />
+
+Return all nodes reachable from the given node.
+
+<ApiSignature name="ReachabilityIndex.ancestors_of" signature={`def ancestors_of(node: str) -> list[str]`} />
+
+Return all ancestors of the given node.
+
+<ApiSignature name="ReachabilityIndex.node_count" signature={`def node_count() -> int`} />
+
+Return the number of nodes in the index.
+
+```python
+index = dag.build_reachability_index()
+print(index.can_reach("extract", "load"))     # True
+print(index.reachable_from("extract"))         # ["transform", "load"]
+print(index.ancestors_of("load"))              # ["extract", "transform"]
+```
+
+---
+
+## ExecutionPlan
+
+<ApiSignature name="ExecutionPlan" signature={`class ExecutionPlan`} />
+
+A computed execution schedule returned by `DAG.execution_plan()` and
+`DAG.execution_plan_constrained()`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `steps` | `list[list[str]]` | Ordered list of execution steps. Each step is a list of node names that can run concurrently. |
+| `total_nodes` | `int` | Total number of nodes in the plan. |
+| `max_parallelism` | `int` | Maximum number of nodes in any single step. |
+| `estimated_makespan` | `float` | Estimated total execution time based on provided costs. |
+| `critical_path` | `list[str]` | The critical path through the plan. |
+
+```python
+plan = dag.execution_plan(costs={"extract": 2.0, "transform": 5.0, "load": 1.0})
+print(f"Steps: {len(plan.steps)}")
+print(f"Max parallelism: {plan.max_parallelism}")
+print(f"Estimated makespan: {plan.estimated_makespan}s")
+
+for i, step in enumerate(plan.steps):
+    print(f"  Step {i}: {step}")
+```
