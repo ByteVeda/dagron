@@ -4,22 +4,26 @@ use crate::dag::PyDAG;
 use crate::errors;
 use crate::iterators::PyNodeIterator;
 use crate::node::PyNodeId;
+use crate::noderef::NodeArg;
 
 #[pymethods]
 impl PyDAG {
-    /// Check if a node with the given name exists.
-    pub fn has_node(&self, name: &str) -> bool {
-        self.inner.has_node(name)
+    /// Check if a node with the given name (or NodeRef) exists.
+    pub fn has_node(&self, node: NodeArg) -> bool {
+        match node {
+            NodeArg::Name(s) => self.inner.has_node(&s),
+            NodeArg::Ref(r) => self.inner.resolve_ref(&r).is_ok(),
+        }
     }
 
-    /// Check if an edge exists between two nodes.
+    /// Check if an edge exists between two nodes (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If either node doesn't exist.
-    pub fn has_edge(&self, from_node: &str, to_node: &str) -> PyResult<bool> {
-        self.inner
-            .has_edge(from_node, to_node)
-            .map_err(errors::into_pyerr)
+    pub fn has_edge(&self, from_node: NodeArg, to_node: NodeArg) -> PyResult<bool> {
+        let from = from_node.into_name(&self.inner)?;
+        let to = to_node.into_name(&self.inner)?;
+        self.inner.has_edge(&from, &to).map_err(errors::into_pyerr)
     }
 
     /// Return the number of nodes in the graph.
@@ -32,74 +36,81 @@ impl PyDAG {
         self.inner.edge_count()
     }
 
-    /// Get the payload associated with a node.
+    /// Get the payload associated with a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn get_payload(&self, py: Python<'_>, name: &str) -> PyResult<Option<PyObject>> {
-        let p = self.inner.get_payload(name).map_err(errors::into_pyerr)?;
+    pub fn get_payload(&self, py: Python<'_>, node: NodeArg) -> PyResult<Option<PyObject>> {
+        let name = node.into_name(&self.inner)?;
+        let p = self.inner.get_payload(&name).map_err(errors::into_pyerr)?;
         Ok(p.payload.as_ref().map(|v| v.clone_ref(py)))
     }
 
-    /// Set the payload for a node.
+    /// Set the payload for a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn set_payload(&mut self, name: &str, payload: Option<Py<PyAny>>) -> PyResult<()> {
+    pub fn set_payload(&mut self, node: NodeArg, payload: Option<Py<PyAny>>) -> PyResult<()> {
+        let name = node.into_name(&self.inner)?;
         let p = self
             .inner
-            .get_payload_mut(name)
+            .get_payload_mut(&name)
             .map_err(errors::into_pyerr)?;
         p.payload = payload;
         Ok(())
     }
 
-    /// Get the metadata associated with a node.
+    /// Get the metadata associated with a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn get_metadata(&self, py: Python<'_>, name: &str) -> PyResult<Option<PyObject>> {
-        let p = self.inner.get_payload(name).map_err(errors::into_pyerr)?;
+    pub fn get_metadata(&self, py: Python<'_>, node: NodeArg) -> PyResult<Option<PyObject>> {
+        let name = node.into_name(&self.inner)?;
+        let p = self.inner.get_payload(&name).map_err(errors::into_pyerr)?;
         Ok(p.metadata.as_ref().map(|v| v.clone_ref(py)))
     }
 
-    /// Set the metadata for a node.
+    /// Set the metadata for a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn set_metadata(&mut self, name: &str, metadata: Option<Py<PyAny>>) -> PyResult<()> {
+    pub fn set_metadata(&mut self, node: NodeArg, metadata: Option<Py<PyAny>>) -> PyResult<()> {
+        let name = node.into_name(&self.inner)?;
         let p = self
             .inner
-            .get_payload_mut(name)
+            .get_payload_mut(&name)
             .map_err(errors::into_pyerr)?;
         p.metadata = metadata;
         Ok(())
     }
 
-    /// Get the immediate predecessors (parents) of a node.
+    /// Get the immediate predecessors (parents) of a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn predecessors(&self, name: &str) -> PyResult<Vec<PyNodeId>> {
-        let nodes = self.inner.predecessors(name).map_err(errors::into_pyerr)?;
+    pub fn predecessors(&self, node: NodeArg) -> PyResult<Vec<PyNodeId>> {
+        let name = node.into_name(&self.inner)?;
+        let nodes = self.inner.predecessors(&name).map_err(errors::into_pyerr)?;
         Ok(nodes.into_iter().map(PyNodeId::from).collect())
     }
 
-    /// Get the immediate successors (children) of a node.
+    /// Get the immediate successors (children) of a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn successors(&self, name: &str) -> PyResult<Vec<PyNodeId>> {
-        let nodes = self.inner.successors(name).map_err(errors::into_pyerr)?;
+    pub fn successors(&self, node: NodeArg) -> PyResult<Vec<PyNodeId>> {
+        let name = node.into_name(&self.inner)?;
+        let nodes = self.inner.successors(&name).map_err(errors::into_pyerr)?;
         Ok(nodes.into_iter().map(PyNodeId::from).collect())
     }
 
-    /// Get all ancestors of a node (transitive predecessors).
+    /// Get all ancestors of a node (transitive predecessors). Accepts str or NodeRef.
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn ancestors(&self, py: Python<'_>, name: &str) -> PyResult<Vec<PyNodeId>> {
-        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+    pub fn ancestors(&self, py: Python<'_>, node: NodeArg) -> PyResult<Vec<PyNodeId>> {
+        let name = node.into_name(&self.inner)?;
+        let idx = self.inner.resolve_name(&name).map_err(errors::into_pyerr)?;
         let graph_ref = self.inner.inner_graph();
         let indices = py.allow_threads(|| dagron_core::algorithms::ancestors(graph_ref, idx));
         Ok(indices
@@ -111,12 +122,13 @@ impl PyDAG {
             .collect())
     }
 
-    /// Get all descendants of a node (transitive successors).
+    /// Get all descendants of a node (transitive successors). Accepts str or NodeRef.
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn descendants(&self, py: Python<'_>, name: &str) -> PyResult<Vec<PyNodeId>> {
-        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+    pub fn descendants(&self, py: Python<'_>, node: NodeArg) -> PyResult<Vec<PyNodeId>> {
+        let name = node.into_name(&self.inner)?;
+        let idx = self.inner.resolve_name(&name).map_err(errors::into_pyerr)?;
         let graph_ref = self.inner.inner_graph();
         let indices = py.allow_threads(|| dagron_core::algorithms::descendants(graph_ref, idx));
         Ok(indices
@@ -128,20 +140,22 @@ impl PyDAG {
             .collect())
     }
 
-    /// Get the in-degree (number of incoming edges) of a node.
+    /// Get the in-degree (number of incoming edges) of a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn in_degree(&self, name: &str) -> PyResult<usize> {
-        self.inner.in_degree(name).map_err(errors::into_pyerr)
+    pub fn in_degree(&self, node: NodeArg) -> PyResult<usize> {
+        let name = node.into_name(&self.inner)?;
+        self.inner.in_degree(&name).map_err(errors::into_pyerr)
     }
 
-    /// Get the out-degree (number of outgoing edges) of a node.
+    /// Get the out-degree (number of outgoing edges) of a node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn out_degree(&self, name: &str) -> PyResult<usize> {
-        self.inner.out_degree(name).map_err(errors::into_pyerr)
+    pub fn out_degree(&self, node: NodeArg) -> PyResult<usize> {
+        let name = node.into_name(&self.inner)?;
+        self.inner.out_degree(&name).map_err(errors::into_pyerr)
     }
 
     /// Get all root nodes (nodes with no incoming edges).
@@ -196,9 +210,10 @@ impl PyDAG {
         PyNodeIterator::new(items)
     }
 
-    /// Return a lazy iterator over ancestors of a node.
-    pub fn iter_ancestors(&self, py: Python<'_>, name: &str) -> PyResult<PyNodeIterator> {
-        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+    /// Return a lazy iterator over ancestors of a node (str or NodeRef).
+    pub fn iter_ancestors(&self, py: Python<'_>, node: NodeArg) -> PyResult<PyNodeIterator> {
+        let name = node.into_name(&self.inner)?;
+        let idx = self.inner.resolve_name(&name).map_err(errors::into_pyerr)?;
         let graph_ref = self.inner.inner_graph();
         let indices = py.allow_threads(|| dagron_core::algorithms::ancestors(graph_ref, idx));
         let items: Vec<(u32, String)> = indices
@@ -208,9 +223,10 @@ impl PyDAG {
         Ok(PyNodeIterator::new(items))
     }
 
-    /// Return a lazy iterator over descendants of a node.
-    pub fn iter_descendants(&self, py: Python<'_>, name: &str) -> PyResult<PyNodeIterator> {
-        let idx = self.inner.resolve_name(name).map_err(errors::into_pyerr)?;
+    /// Return a lazy iterator over descendants of a node (str or NodeRef).
+    pub fn iter_descendants(&self, py: Python<'_>, node: NodeArg) -> PyResult<PyNodeIterator> {
+        let name = node.into_name(&self.inner)?;
+        let idx = self.inner.resolve_name(&name).map_err(errors::into_pyerr)?;
         let graph_ref = self.inner.inner_graph();
         let indices = py.allow_threads(|| dagron_core::algorithms::descendants(graph_ref, idx));
         let items: Vec<(u32, String)> = indices

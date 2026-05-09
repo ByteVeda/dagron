@@ -4,12 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from dagron._internal import NodeRef
     from dagron.execution.tracing import ExecutionTrace
+    from dagron.flow import FlowFuture
+
+
+# Type variable used for `__getitem__` overloads (PEP 695 generic syntax is
+# used directly on `NodeResult` below, so this TypeVar is method-scoped).
+T = TypeVar("T")
 
 
 class NodeStatus(Enum):
@@ -26,8 +33,14 @@ class NodeStatus(Enum):
 
 
 @dataclass
-class NodeResult:
-    """Result of executing a single node."""
+class NodeResult[T]:
+    """Result of executing a single node.
+
+    Generic in the wrapped value type so typed lookups
+    (e.g. `result[my_flow_future]`) preserve the value's type at the
+    *class* level. The `result` field is typed `Any` for backwards
+    compat with code that subscripts it directly (`result["k"].result["x"]`).
+    """
 
     name: str
     status: NodeStatus
@@ -55,7 +68,7 @@ class ExecutionCallbacks:
 class ExecutionResult:
     """Aggregate result of executing an entire DAG."""
 
-    node_results: dict[str, NodeResult] = field(default_factory=dict)
+    node_results: dict[str, NodeResult[Any]] = field(default_factory=dict)
     succeeded: int = 0
     failed: int = 0
     skipped: int = 0
@@ -63,3 +76,20 @@ class ExecutionResult:
     cancelled: int = 0
     total_duration_seconds: float = 0.0
     trace: ExecutionTrace | None = None
+
+    @overload
+    def __getitem__(self, node: FlowFuture[T]) -> NodeResult[T]: ...
+    @overload
+    def __getitem__(self, node: str | NodeRef) -> NodeResult[Any]: ...
+    def __getitem__(self, node: str | NodeRef | FlowFuture[Any]) -> NodeResult[Any]:
+        """Look up a node's result by string name, NodeRef, or FlowFuture."""
+        # Both NodeRef and FlowFuture expose `.name`.
+        key = node if isinstance(node, str) else node.name
+        return self.node_results[key]
+
+    def __contains__(self, node: object) -> bool:
+        if isinstance(node, str):
+            return node in self.node_results
+        # NodeRef and FlowFuture both expose `.name`.
+        name = getattr(node, "name", None)
+        return name in self.node_results if isinstance(name, str) else False

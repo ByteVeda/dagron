@@ -161,7 +161,7 @@ class ConditionalExecutor:
             if self._fail_fast and failed_nodes:
                 ancestors = {n.name for n in self._dag.ancestors(name)}
                 if ancestors & failed_nodes:
-                    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
+                    nr: NodeResult[Any] = NodeResult(name=name, status=NodeStatus.SKIPPED)
                     result.node_results[name] = nr
                     result.skipped += 1
                     skipped_nodes.add(name)

@@ -16,7 +16,7 @@ def _run_sync_task(
     name: str,
     task_fn: Callable[[], Any],
     callbacks: ExecutionCallbacks,
-) -> NodeResult:
+) -> NodeResult[Any]:
     """Execute a synchronous task function with callbacks."""
     from dagron.execution._types import NodeResult, NodeStatus
 
@@ -57,7 +57,7 @@ def _record_skip(
     from dagron.execution._types import NodeResult, NodeStatus
     from dagron.execution.tracing import TraceEventType
 
-    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
+    nr: NodeResult[Any] = NodeResult(name=name, status=NodeStatus.SKIPPED)
     result.node_results[name] = nr
     result.skipped += 1
     if callbacks.on_skip:

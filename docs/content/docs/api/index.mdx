@@ -1,0 +1,42 @@
+---
+title: API Reference
+description: Complete reference for every public class, function, and protocol exposed by dagron.
+---
+
+dagron's public API is grouped into five sections. Pick one from the
+sidebar, or jump straight in:
+
+<FeatureGrid>
+  <FeatureCard
+    title="Core"
+    description="DAG, NodeId, NodeRef, GraphStats, GraphDiff, ReachabilityIndex, ExecutionPlan, plus the fluent DAGBuilder and the full error hierarchy."
+    apiHref="/api/core/core"
+  />
+  <FeatureCard
+    title="Execution"
+    description="DAGExecutor, AsyncDAGExecutor, IncrementalExecutor, CachedDAGExecutor, CheckpointExecutor, ConditionalExecutor, DynamicExecutor, ResourceAwareExecutor, DistributedExecutor, ReactiveDAG, plus Pipeline and the @task decorator."
+    apiHref="/api/execution/execution"
+  />
+  <FeatureCard
+    title="Observability"
+    description="ExecutionTrace, TraceEvent, NodeProfile, ProfileReport — Chrome-compatible tracing and critical-path profiling."
+    apiHref="/api/observability/tracing"
+  />
+  <FeatureCard
+    title="Analysis & Validation"
+    description="explain, what_if, lineage, lint, query DSL, NodeContract, DataFrameSchema."
+    apiHref="/api/analysis/analysis"
+  />
+  <FeatureCard
+    title="Utilities"
+    description="DAGTemplate, VersionedDAG, compose, pretty_print, from_records, plugins/hooks, and the typed-handle modern API surface."
+    apiHref="/api/utilities/modern-api"
+  />
+</FeatureGrid>
+
+## Looking for the new typed handles?
+
+If you're new to the `NodeRef`, `@flow`, `Effect`, reactive engine,
+content cache, and replay APIs, start with the [Typed &
+Reactive](/typed-and-reactive) walkthrough — it composes everything
+end-to-end with worked examples.

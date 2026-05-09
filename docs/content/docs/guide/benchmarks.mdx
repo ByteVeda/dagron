@@ -1,0 +1,164 @@
+---
+title: Benchmarks
+description: Performance benchmarks comparing dagron's Rust core against NetworkX on common DAG operations.
+---
+
+dagron's core graph engine is written in Rust (petgraph + PyO3), giving it a significant performance advantage over pure-Python graph libraries. This page presents representative benchmarks comparing dagron against [NetworkX](https://networkx.org/) on equivalent operations.
+
+<Callout type="info" title="Reproduce these results yourself">
+```bash
+uv pip install pytest-benchmark networkx
+uv run python -m pytest tests/python/test_benchmarks.py --benchmark-only --benchmark-columns=mean,stddev,rounds -q
+```
+</Callout>
+All Python benchmarks below were measured with `pytest-benchmark` on a single machine. Rust-only benchmarks use [Criterion](https://bheisler.github.io/criterion.rs/). Numbers will vary by hardware — treat ratios as the meaningful signal.
+
+**Hardware:** AMD Ryzen / Intel Core (modern x86_64), Linux, Python 3.12, dagron 0.1.0.
+**Last measured:** March 2026.
+
+---
+
+## dagron vs NetworkX (Python API)
+
+### Construction (10K nodes)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Chain (10K nodes, 9,999 edges) | 7.66 ms | 21.04 ms | **2.7x** |
+| Wide (1,000 roots x 10 depth) | 7.05 ms | 22.45 ms | **3.2x** |
+
+### Topological Sort (10K-node chain)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Topological sort | 880 us | 6,668 us | **7.6x** |
+
+### Ancestors / Descendants (mid-node on 10K chain)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Ancestors of node 5000 | 562 us | 1,955 us | **3.5x** |
+| Descendants of node 5000 | 548 us | 2,053 us | **3.7x** |
+
+### Cycle Detection / Validation (10K chain)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Validate (acyclic check) | 535 us | 6,718 us | **12.6x** |
+
+### JSON Serialization (1K-node chain)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Serialize to JSON | 258 us | 823 us | **3.2x** |
+
+### Reachability (5K-node chain)
+
+| Benchmark | dagron | NetworkX |
+|-----------|--------|----------|
+| Build reachability index | 1,818 us | N/A (no equivalent) |
+| Batch query (10 pairs) | 3.2 us | 12,637 us (nx.has_path) |
+
+Once the reachability index is built, dagron answers batch reachability queries **~3,900x faster** than NetworkX's `has_path` (which re-traverses the graph each call).
+
+### BFS / Topological Levels (10K chain)
+
+| Benchmark | dagron | NetworkX | Speedup |
+|-----------|--------|----------|---------|
+| Topological levels | 2,045 us | 9,312 us | **4.6x** |
+
+---
+
+## Why the performance gap?
+
+Three factors drive dagron's advantage:
+
+1. **Rust core releases the GIL.** Every expensive operation in dagron runs inside `py.allow_threads()`, so the Rust code executes without Python interpreter overhead.
+2. **petgraph's adjacency list is cache-friendly.** Nodes and edges are stored in contiguous arena-allocated vectors, giving excellent CPU cache behavior during traversals.
+3. **ahash beats Python dict overhead.** Node name lookups use `AHashMap` — a fast, non-cryptographic hash map — instead of Python's general-purpose `dict`.
+
+---
+
+## Rust-Only Numbers (Criterion)
+
+These benchmarks run entirely in Rust, showing the pure performance ceiling before any PyO3 overhead.
+
+### Construction
+
+| Benchmark | Time |
+|-----------|------|
+| Chain 1K | 252 us |
+| Chain 10K | 2.73 ms |
+| Chain 100K | 48.6 ms |
+| Wide 1,000x10 | 2.96 ms |
+| Diamond 10x10 | 111 us |
+
+### Topological Sort (10K nodes)
+
+| Benchmark | Time |
+|-----------|------|
+| Kahn (chain) | 332 us |
+| Kahn (wide) | 332 us |
+| DFS (chain) | 336 us |
+| DFS (wide) | 337 us |
+| Levels (chain) | 617 us |
+| Levels (wide) | 331 us |
+
+### Cycle Detection (10K chain)
+
+| Benchmark | Time |
+|-----------|------|
+| validate (acyclic) | 466 us |
+| would_create_cycle | 501 us |
+
+### Reachability (10K chain)
+
+| Benchmark | Time |
+|-----------|------|
+| Build index | 3.26 ms |
+| can_reach (single query) | 6.8 ns |
+| reachable_from | 11.5 us |
+| ancestors_of | 27.4 us |
+
+### Serialization
+
+| Benchmark | Time |
+|-----------|------|
+| to_json (1K) | 241 us |
+| from_json (1K) | 481 us |
+| to_bincode (1K) | 57.9 us |
+| from_bincode (1K) | 305 us |
+| to_bincode (10K) | 617 us |
+| from_bincode (10K) | 3.30 ms |
+| to_bincode (100K) | 6.60 ms |
+| to_dot (1K) | 48.0 us |
+
+### Scheduling (1K chain)
+
+| Benchmark | Time |
+|-----------|------|
+| Max parallelism plan | 281 us |
+| Resource-constrained (4 workers) | 450 us |
+| Critical path | 133 us |
+
+### Transforms (1K chain)
+
+| Benchmark | Time |
+|-----------|------|
+| Transitive reduction | 268 us |
+| Snapshot (deep clone) | 70 us |
+
+### Introspection (10K chain)
+
+| Benchmark | Time |
+|-----------|------|
+| Ancestors (mid-node) | 273 us |
+| Descendants (mid-node) | 274 us |
+| Roots | 37 ns |
+| Leaves | 39 ns |
+
+<Callout type="info" title="Run Rust benchmarks">
+```bash
+cargo bench --bench graph_bench
+```
+</Callout>

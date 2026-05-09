@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 use crate::dag::PyDAG;
 use crate::errors;
+use crate::noderef::NodeArg;
 use crate::payload::PyNodePayload;
 
 /// Clone a PyNodePayload, using the GIL to clone Py<PyAny> references.
@@ -86,11 +87,15 @@ impl PyDAG {
     pub fn collapse(
         &self,
         py: Python<'_>,
-        nodes: Vec<String>,
+        nodes: Vec<NodeArg>,
         collapsed_name: String,
         payload: Option<PyObject>,
     ) -> PyResult<PyDAG> {
-        let node_refs: Vec<&str> = nodes.iter().map(|s| s.as_str()).collect();
+        let node_names: Vec<String> = nodes
+            .into_iter()
+            .map(|n| n.into_name(&self.inner))
+            .collect::<PyResult<_>>()?;
+        let node_refs: Vec<&str> = node_names.iter().map(|s| s.as_str()).collect();
         let collapse_set: std::collections::HashSet<&str> = node_refs.iter().copied().collect();
 
         // Validate all nodes exist
@@ -168,8 +173,13 @@ impl PyDAG {
     ///
     /// Returns:
     ///     A list of (node, immediate_dominator) tuples.
-    pub fn dominator_tree(&self, py: Python<'_>, root: String) -> PyResult<Vec<(String, String)>> {
-        py.allow_threads(|| self.inner.dominator_tree(&root).map_err(errors::into_pyerr))
+    pub fn dominator_tree(&self, py: Python<'_>, root: NodeArg) -> PyResult<Vec<(String, String)>> {
+        let root_name = root.into_name(&self.inner)?;
+        py.allow_threads(|| {
+            self.inner
+                .dominator_tree(&root_name)
+                .map_err(errors::into_pyerr)
+        })
     }
 
     /// Create an independent snapshot (deep clone) of this DAG.

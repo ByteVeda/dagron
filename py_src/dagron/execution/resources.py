@@ -308,7 +308,7 @@ class ResourceAwareExecutor:
             key=lambda n: -bottom_levels.get(n, 0.0),
         )
 
-        active_futures: dict[Future[NodeResult], tuple[str, ResourceRequirements]] = {}
+        active_futures: dict[Future[NodeResult[Any]], tuple[str, ResourceRequirements]] = {}
 
         pool_workers = max(len(tasks), 1)
         with ThreadPoolExecutor(max_workers=pool_workers) as pool:
@@ -523,7 +523,7 @@ class AsyncResourceAwareExecutor:
             key=lambda n: -bottom_levels.get(n, 0.0),
         )
 
-        active_tasks: dict[asyncio.Task[NodeResult], tuple[str, ResourceRequirements]] = {}
+        active_tasks: dict[asyncio.Task[NodeResult[Any]], tuple[str, ResourceRequirements]] = {}
         all_nodes = set(in_degree.keys())
 
         while completed_nodes != all_nodes:
@@ -533,7 +533,7 @@ class AsyncResourceAwareExecutor:
                     continue
 
                 if self._fail_fast and failed_nodes and get_ancestors(name) & failed_nodes:
-                    nr = NodeResult(name=name, status=NodeStatus.SKIPPED)
+                    nr: NodeResult[Any] = NodeResult(name=name, status=NodeStatus.SKIPPED)
                     result.node_results[name] = nr
                     result.skipped += 1
                     completed_nodes.add(name)
@@ -622,7 +622,7 @@ class AsyncResourceAwareExecutor:
         self,
         name: str,
         task_fn: Callable[[], Awaitable[Any]],
-    ) -> NodeResult:
+    ) -> NodeResult[Any]:
         if self._callbacks.on_start:
             self._callbacks.on_start(name)
         t0 = time.monotonic()

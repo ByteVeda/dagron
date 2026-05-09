@@ -5,9 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from dagron._internal import NodeRef
+
 if TYPE_CHECKING:
     from dagron._internal import DAG
     from dagron.execution._types import ExecutionResult
+
+
+def _name_of(node: str | NodeRef) -> str:
+    return node.name if isinstance(node, NodeRef) else node
 
 
 @dataclass(frozen=True)
@@ -65,11 +71,11 @@ class LineageReport:
             if nr.status == NodeStatus.COMPLETED
         }
 
-    def lineage(self, node: str) -> LineageRecord:
+    def lineage(self, node: str | NodeRef) -> LineageRecord:
         """Compute lineage for a single node.
 
         Args:
-            node: Name of the node to analyse.
+            node: The node to analyse (str name or NodeRef).
 
         Returns:
             A :class:`LineageRecord` containing the node's upstream
@@ -78,14 +84,15 @@ class LineageReport:
         Raises:
             KeyError: If the node is not in the DAG.
         """
-        preds = [n.name for n in self._dag.predecessors(node)]
+        node_name = _name_of(node)
+        preds = [n.name for n in self._dag.predecessors(node_name)]
         direct_inputs = sorted(n for n in preds if n in self._completed)
 
-        ancestors = {n.name for n in self._dag.ancestors(node)}
+        ancestors = {n.name for n in self._dag.ancestors(node_name)}
         completed_ancestors = ancestors & self._completed
         upstream_chain = sorted(completed_ancestors)
 
-        depth = self._compute_depth(node, completed_ancestors)
+        depth = self._compute_depth(node_name, completed_ancestors)
 
         return LineageRecord(
             direct_inputs=direct_inputs,
@@ -94,11 +101,11 @@ class LineageReport:
             depth=depth,
         )
 
-    def impact(self, node: str) -> ImpactRecord:
+    def impact(self, node: str | NodeRef) -> ImpactRecord:
         """Compute downstream impact of a single node.
 
         Args:
-            node: Name of the node to analyse.
+            node: The node to analyse (str name or NodeRef).
 
         Returns:
             An :class:`ImpactRecord` describing downstream completed nodes.
@@ -106,10 +113,11 @@ class LineageReport:
         Raises:
             KeyError: If the node is not in the DAG.
         """
-        succs = [n.name for n in self._dag.successors(node)]
+        node_name = _name_of(node)
+        succs = [n.name for n in self._dag.successors(node_name)]
         directly_affects = sorted(n for n in succs if n in self._completed)
 
-        descs = {n.name for n in self._dag.descendants(node)}
+        descs = {n.name for n in self._dag.descendants(node_name)}
         completed_descs = descs & self._completed
         transitively_affects = sorted(completed_descs)
 
@@ -122,7 +130,7 @@ class LineageReport:
             affected_leaves=affected_leaves,
         )
 
-    def data_flow_path(self, source: str, target: str) -> list[str] | None:
+    def data_flow_path(self, source: str | NodeRef, target: str | NodeRef) -> list[str] | None:
         """Find the shortest path where all intermediate nodes completed.
 
         Args:
@@ -133,7 +141,9 @@ class LineageReport:
             List of node names forming the shortest completed path,
             or ``None`` if no such path exists.
         """
-        all_paths_result = self._dag.all_paths(source, target)
+        source_name = _name_of(source)
+        target_name = _name_of(target)
+        all_paths_result = self._dag.all_paths(source_name, target_name)
         best: list[str] | None = None
         for path in all_paths_result:
             names = [n.name for n in path]

@@ -208,7 +208,7 @@ class CheckpointExecutor:
             if resume_from and name in resume_from:
                 saved = self._load_node_result(name)
                 if saved and saved["status"] == "completed":
-                    nr = NodeResult(
+                    nr: NodeResult[Any] = NodeResult(
                         name=name,
                         status=NodeStatus.COMPLETED,
                         result=saved["result"],

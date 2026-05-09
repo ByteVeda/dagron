@@ -28,6 +28,21 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --group dev
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+
+      - name: Install docs dependencies
+        run: cd docs && pnpm install --frozen-lockfile
+
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
@@ -84,7 +99,7 @@ jobs:
           args: --release
 
       - name: Run tests
-        run: uv run pytest tests/python/ -v --tb=short --junit-xml=results.xml --ignore=tests/python/test_benchmarks.py
+        run: uv run pytest tests/python/ -v --tb=short --junit-xml=results.xml --ignore=tests/python/test_benchmarks.py --ignore=tests/python/test_reactive_bench.py
 
       - name: Upload test results
         if: always()

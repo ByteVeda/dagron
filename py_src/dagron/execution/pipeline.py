@@ -2,80 +2,22 @@
 
 from __future__ import annotations
 
-import asyncio
 import inspect
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+
+# Re-export the shared @task / TaskSpec / _get_spec from flow.py.
+# The same @task decorator powers both Pipeline (param-name wiring) and
+# @dagron.flow (call-structure wiring).
+from dagron.flow import TaskSpec, _get_spec, task
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from dagron._internal import DAG
+    from dagron._internal import DAG, NodeRef
     from dagron.execution._types import ExecutionCallbacks, ExecutionResult
 
 
-@dataclass(frozen=True)
-class TaskSpec:
-    """Metadata for a decorated task function."""
-
-    name: str
-    fn: Callable[..., Any]
-    dependencies: list[str]
-    is_async: bool
-
-
-def task[F: Callable[..., Any]](fn: F) -> F:
-    """Decorator that marks a function as a DAG task.
-
-    Dependencies are inferred from the function's parameter names.
-    Each parameter name must match the name of another ``@task``-decorated
-    function whose return value will be passed as that argument.
-
-    Parameters with defaults are treated as optional dependencies:
-    if no matching task exists, the default value is used.
-
-    Example::
-
-        @dagron.task
-        def fetch_data() -> list[dict]: ...
-
-        @dagron.task
-        def process(fetch_data: list[dict]) -> pd.DataFrame: ...
-
-        pipeline = dagron.Pipeline([fetch_data, process])
-        result = pipeline.execute()
-
-    """
-    sig = inspect.signature(fn)
-    deps = []
-    for param_name, param in sig.parameters.items():
-        # Skip *args, **kwargs
-        if param.kind in (
-            inspect.Parameter.VAR_POSITIONAL,
-            inspect.Parameter.VAR_KEYWORD,
-        ):
-            continue
-        deps.append(param_name)
-
-    spec = TaskSpec(
-        name=fn.__name__,
-        fn=fn,
-        dependencies=deps,
-        is_async=asyncio.iscoroutinefunction(fn),
-    )
-    fn._dagron_task = spec  # type: ignore[attr-defined]
-    return fn
-
-
-def _get_spec(fn: Any) -> TaskSpec:
-    """Extract the TaskSpec from a decorated function."""
-    spec: TaskSpec | None = getattr(fn, "_dagron_task", None)
-    if spec is None:
-        raise TypeError(
-            f"{fn!r} is not a @dagron.task-decorated function. "
-            "Use @dagron.task to mark functions as pipeline tasks."
-        )
-    return spec
+__all__ = ["Pipeline", "TaskSpec", "task"]
 
 
 class Pipeline:
@@ -179,7 +121,7 @@ class Pipeline:
 
     def _make_task_callables(
         self, overrides: dict[str, Any] | None = None
-    ) -> dict[str, Callable[[], Any]]:
+    ) -> dict[str | NodeRef, Callable[[], Any]]:
         """Build the task dict for executors, wiring outputs as inputs."""
         results: dict[str, Any] = {}
         if overrides:
@@ -219,7 +161,7 @@ class Pipeline:
 
     def _make_async_task_callables(
         self, overrides: dict[str, Any] | None = None
-    ) -> dict[str, Callable[[], Any]]:
+    ) -> dict[str | NodeRef, Callable[[], Any]]:
         """Build the async task dict for AsyncDAGExecutor."""
         results: dict[str, Any] = {}
         if overrides:

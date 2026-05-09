@@ -20,26 +20,36 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: cd docs && npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Build Docusaurus
-        run: cd docs && npm run build
+      - name: Build Fumadocs site
+        env:
+          DOCS_BASE_PATH: /dagron
+        run: pnpm build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/build
+          path: docs/out
 
   deploy:
     needs: build

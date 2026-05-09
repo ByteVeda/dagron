@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@theme {
+  --font-sans:
+    var(--font-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    var(--font-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular,
+    "Cascadia Mono", monospace;
+
+  /* dagron purple — primary brand */
+  --color-fd-primary: #6c5ce7;
+
+  /* status palette (light mode) */
+  --color-dagron-pending: #a0aec0;
+  --color-dagron-running: #4299e1;
+  --color-dagron-completed: #48bb78;
+  --color-dagron-failed: #f56565;
+  --color-dagron-skipped: #ed8936;
+  --color-dagron-timed-out: #ed64a6;
+  --color-dagron-cancelled: #a0aec0;
+  --color-dagron-cache-hit: #38b2ac;
+
+  /* effect palette */
+  --color-dagron-effect-pure: #6c5ce7;
+  --color-dagron-effect-read: #38b2ac;
+  --color-dagron-effect-write: #ed8936;
+  --color-dagron-effect-network: #4299e1;
+  --color-dagron-effect-nondeterministic: #f56565;
+}
+
+.dark {
+  --color-fd-primary: #a29bfe;
+
+  --color-dagron-pending: #718096;
+  --color-dagron-running: #63b3ed;
+  --color-dagron-completed: #68d391;
+  --color-dagron-failed: #fc8181;
+  --color-dagron-skipped: #f6ad55;
+  --color-dagron-timed-out: #f687b3;
+  --color-dagron-cancelled: #718096;
+  --color-dagron-cache-hit: #4fd1c5;
+
+  --color-dagron-effect-pure: #a29bfe;
+  --color-dagron-effect-read: #4fd1c5;
+  --color-dagron-effect-write: #f6ad55;
+  --color-dagron-effect-network: #63b3ed;
+  --color-dagron-effect-nondeterministic: #fc8181;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}

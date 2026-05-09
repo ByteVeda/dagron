@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 use crate::dag::PyDAG;
 use crate::errors;
+use crate::noderef::NodeArg;
 use crate::transforms::clone_edges;
 
 #[pymethods]
@@ -18,11 +19,17 @@ impl PyDAG {
     ///
     /// Raises:
     ///     NodeNotFoundError: If any node doesn't exist.
-    pub fn subgraph(&self, py: Python<'_>, nodes: Vec<String>) -> PyResult<PyDAG> {
+    pub fn subgraph(&self, py: Python<'_>, nodes: Vec<NodeArg>) -> PyResult<PyDAG> {
         let mut new_dag = dagron_core::DAG::new();
 
+        // Resolve all node args to validated names first
+        let names: Vec<String> = nodes
+            .into_iter()
+            .map(|n| n.into_name(&self.inner))
+            .collect::<PyResult<_>>()?;
+
         // Add matching nodes with cloned payloads
-        for name in &nodes {
+        for name in &names {
             if !self.inner.has_node(name) {
                 return Err(errors::into_pyerr(dagron_core::DagronError::NodeNotFound(
                     name.clone(),
@@ -57,7 +64,7 @@ impl PyDAG {
     pub fn subgraph_by_depth(
         &self,
         py: Python<'_>,
-        root: String,
+        root: NodeArg,
         depth: usize,
         direction: &str,
     ) -> PyResult<PyDAG> {
@@ -73,7 +80,11 @@ impl PyDAG {
         };
 
         // Resolve root and compute neighborhood
-        let root_idx = self.inner.resolve_name(&root).map_err(errors::into_pyerr)?;
+        let root_name = root.into_name(&self.inner)?;
+        let root_idx = self
+            .inner
+            .resolve_name(&root_name)
+            .map_err(errors::into_pyerr)?;
         let neighborhood = py.allow_threads(|| {
             dagron_core::algorithms::depth_neighborhood(
                 self.inner.inner_graph(),
