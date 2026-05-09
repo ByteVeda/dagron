@@ -202,56 +202,63 @@ class TestDagMetadataMirror:
 
 class TestExecutorIsolation:
     def test_two_pure_nodes_run_in_parallel(self):
-        """When isolation is enforced, PURE tasks should still parallelize."""
-        # Two parallel-ready pure nodes (no dependency between them).
-        # Suppress the AST-scan warning — the time.sleep here is just to
-        # make parallelism observable.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
+        """When isolation is enforced, PURE tasks should still parallelize.
 
-            @task
-            def slow_pure_a() -> str:
-                time.sleep(0.05)
-                return "a"
+        Use a concurrency counter (max_active) instead of wall-clock timing
+        — wall-clock thresholds are flaky on slow CI runners.
+        """
 
-            @task
-            def slow_pure_b() -> str:
-                time.sleep(0.05)
-                return "b"
+        @task
+        def pure_a() -> None:
+            return None
+
+        @task
+        def pure_b() -> None:
+            return None
 
         @flow
         def pipeline():
-            slow_pure_a()
-            return slow_pure_b()
+            pure_a()
+            return pure_b()
 
-        # Build dag and run with isolation
         dag = pipeline.dag()
 
-        def _sleep_a() -> str:
-            time.sleep(0.05)
-            return "a"
+        active = 0
+        max_active = 0
+        lock = threading.Lock()
+        # Both tasks must be inside the critical section at the same instant
+        # for max_active to reach 2; the barrier guarantees they overlap.
+        barrier = threading.Barrier(2, timeout=2.0)
 
-        def _sleep_b() -> str:
-            time.sleep(0.05)
-            return "b"
+        def make_fn() -> Callable[[], None]:
+            def fn() -> None:
+                nonlocal active, max_active
+                barrier.wait()
+                with lock:
+                    active += 1
+                    max_active = max(max_active, active)
+                time.sleep(0.02)
+                with lock:
+                    active -= 1
+
+            return fn
 
         tasks_dict: dict[str | NodeRef, Callable[[], Any]] = {
-            "slow_pure_a": _sleep_a,
-            "slow_pure_b": _sleep_b,
+            "pure_a": make_fn(),
+            "pure_b": make_fn(),
         }
         executor = DAGExecutor(
             dag,
             max_workers=2,
             enforce_effect_isolation=True,
         )
-        t0 = time.monotonic()
         result = executor.execute(tasks_dict)
-        elapsed = time.monotonic() - t0
 
         assert result.succeeded == 2
-        # Two 50ms sleeps, run in parallel, should finish in < 90ms.
-        # Generous bound to avoid CI flakiness.
-        assert elapsed < 0.15, f"PURE tasks did not parallelize ({elapsed:.3f}s)"
+        assert max_active == 2, (
+            f"PURE tasks did not run concurrently (max_active={max_active}); "
+            "isolation incorrectly serialised non-ND tasks."
+        )
 
     def test_two_nondeterministic_nodes_serialize(self):
         """Under isolation, two NONDETERMINISTIC tasks must NOT overlap."""
