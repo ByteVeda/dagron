@@ -20,7 +20,7 @@ from dagron.execution._types import ExecutionCallbacks, NodeResult, NodeStatus
 class IncrementalResult:
     """Result of an incremental DAG execution."""
 
-    node_results: dict[str, NodeResult] = field(default_factory=dict)
+    node_results: dict[str, NodeResult[Any]] = field(default_factory=dict)
     recomputed: list[str] = field(default_factory=list)
     early_cutoff: list[str] = field(default_factory=list)
     reused: list[str] = field(default_factory=list)

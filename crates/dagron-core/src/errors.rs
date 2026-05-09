@@ -12,6 +12,11 @@ pub enum DagronError {
     #[error("Edge not found: {0} -> {1}")]
     EdgeNotFound(String, String),
 
+    #[error(
+        "Stale node reference: {0} (the node was removed or replaced after the ref was created)"
+    )]
+    StaleNodeRef(String),
+
     #[error("Graph error: {0}")]
     Graph(String),
 }

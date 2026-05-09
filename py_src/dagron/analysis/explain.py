@@ -5,8 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from dagron._internal import NodeRef
+
 if TYPE_CHECKING:
     from dagron._internal import DAG
+
+
+def _name_of(node: str | NodeRef) -> str:
+    """Coerce either a string or a NodeRef into a node name."""
+    return node.name if isinstance(node, NodeRef) else node
 
 
 @dataclass(frozen=True)
@@ -80,18 +87,21 @@ class WhatIfResult:
         return "\n".join(lines)
 
 
-def explain(dag: DAG, node_name: str, costs: dict[str, float] | None = None) -> NodeExplanation:
+def explain(
+    dag: DAG, node: str | NodeRef, costs: dict[str, float] | None = None
+) -> NodeExplanation:
     """Generate a structured diagnostic for a node.
 
     Args:
         dag: The DAG to analyze.
-        node_name: Name of the node to explain.
+        node: The node to explain (str name or NodeRef).
         costs: Optional cost mapping for critical path analysis.
 
     Returns:
         NodeExplanation with depth, critical path membership,
         bottleneck score, dominator set, and dependency chains.
     """
+    node_name = _name_of(node)
     # Depth: which topological level is this node on?
     levels = dag.topological_levels()
     depth_from_root = 0
@@ -170,19 +180,20 @@ def explain(dag: DAG, node_name: str, costs: dict[str, float] | None = None) -> 
 def what_if(
     dag: DAG,
     *,
-    remove_nodes: list[str] | None = None,
-    remove_edges: list[tuple[str, str]] | None = None,
+    remove_nodes: list[str | NodeRef] | None = None,
+    remove_edges: list[tuple[str | NodeRef, str | NodeRef]] | None = None,
     add_nodes: list[str] | None = None,
-    add_edges: list[tuple[str, str]] | None = None,
+    add_edges: list[tuple[str | NodeRef, str | NodeRef]] | None = None,
     costs: dict[str, float] | None = None,
 ) -> WhatIfResult:
     """Analyze the effect of hypothetical mutations without modifying the DAG.
 
     Args:
         dag: The DAG to analyze.
-        remove_nodes: Nodes to hypothetically remove.
+        remove_nodes: Nodes to hypothetically remove (str or NodeRef).
         remove_edges: Edges to hypothetically remove.
-        add_nodes: Nodes to hypothetically add.
+        add_nodes: Nodes to hypothetically add (must be string names — these
+            are new nodes that don't exist yet).
         add_edges: Edges to hypothetically add.
         costs: Optional cost mapping for critical path analysis.
 
@@ -190,6 +201,16 @@ def what_if(
         WhatIfResult with impact analysis.
     """
     from dagron._internal import CycleError
+
+    # Normalize NodeRef inputs to plain string names so the rest of the
+    # function stays string-typed.
+    norm_remove_nodes: list[str] = [_name_of(n) for n in remove_nodes] if remove_nodes else []
+    norm_remove_edges: list[tuple[str, str]] = (
+        [(_name_of(f), _name_of(t)) for f, t in remove_edges] if remove_edges else []
+    )
+    norm_add_edges: list[tuple[str, str]] = (
+        [(_name_of(f), _name_of(t)) for f, t in add_edges] if add_edges else []
+    )
 
     # Get baseline stats
     original_stats = dag.stats()
@@ -199,36 +220,35 @@ def what_if(
     mutated = dag.snapshot()
 
     # Check for cycle creation from new edges before making any changes
-    if add_edges:
-        for from_node, to_node in add_edges:
-            # First ensure both nodes exist
-            from_exists = mutated.has_node(from_node)
-            to_exists = mutated.has_node(to_node)
+    for from_node, to_node in norm_add_edges:
+        # First ensure both nodes exist
+        from_exists = mutated.has_node(from_node)
+        to_exists = mutated.has_node(to_node)
 
-            if not from_exists:
-                mutated.add_node(from_node)
-            if not to_exists:
-                mutated.add_node(to_node)
+        if not from_exists:
+            mutated.add_node(from_node)
+        if not to_exists:
+            mutated.add_node(to_node)
 
-            # Try adding the edge, catch cycle error
+        # Try adding the edge, catch cycle error
+        try:
+            mutated.add_edge(from_node, to_node)
+        except CycleError:
+            # Find the cycle path
+            # The cycle goes: to_node -> ... -> from_node -> to_node
             try:
-                mutated.add_edge(from_node, to_node)
-            except CycleError:
-                # Find the cycle path
-                # The cycle goes: to_node -> ... -> from_node -> to_node
-                try:
-                    path_nodes = mutated.shortest_path(to_node, from_node)
-                    if path_nodes:
-                        cycle_path = [n.name for n in path_nodes] + [to_node]
-                    else:
-                        cycle_path = [from_node, to_node, from_node]
-                except Exception:
+                path_nodes = mutated.shortest_path(to_node, from_node)
+                if path_nodes:
+                    cycle_path = [n.name for n in path_nodes] + [to_node]
+                else:
                     cycle_path = [from_node, to_node, from_node]
+            except Exception:
+                cycle_path = [from_node, to_node, from_node]
 
-                return WhatIfResult(
-                    would_create_cycle=True,
-                    cycle_path=cycle_path,
-                )
+            return WhatIfResult(
+                would_create_cycle=True,
+                cycle_path=cycle_path,
+            )
 
     # Add new nodes
     if add_nodes:
@@ -237,16 +257,14 @@ def what_if(
                 mutated.add_node(name)
 
     # Remove edges
-    if remove_edges:
-        for from_node, to_node in remove_edges:
-            if mutated.has_edge(from_node, to_node):
-                mutated.remove_edge(from_node, to_node)
+    for from_node, to_node in norm_remove_edges:
+        if mutated.has_edge(from_node, to_node):
+            mutated.remove_edge(from_node, to_node)
 
     # Remove nodes
-    if remove_nodes:
-        for name in remove_nodes:
-            if mutated.has_node(name):
-                mutated.remove_node(name)
+    for name in norm_remove_nodes:
+        if mutated.has_node(name):
+            mutated.remove_node(name)
 
     # Analyze the result
     new_stats = mutated.stats()
@@ -254,9 +272,9 @@ def what_if(
     # Find orphaned nodes: nodes that were NOT roots in the original DAG
     # but became roots (no predecessors) in the mutated DAG.
     orphaned: list[str] = []
-    if remove_nodes or remove_edges:
+    if norm_remove_nodes or norm_remove_edges:
         original_roots = {n.name for n in dag.roots()}
-        removed_set = set(remove_nodes) if remove_nodes else set()
+        removed_set = set(norm_remove_nodes)
         for node in mutated.topological_sort():
             name = node.name
             if name in removed_set:

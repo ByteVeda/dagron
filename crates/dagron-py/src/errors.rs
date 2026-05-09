@@ -37,6 +37,12 @@ create_exception!(
     DagronError,
     "Raised for general graph operation errors."
 );
+create_exception!(
+    dagron,
+    StaleNodeRefError,
+    DagronError,
+    "Raised when a NodeRef refers to a node that has been removed or replaced."
+);
 
 /// Convert a DagronError into a PyErr.
 pub fn into_pyerr(err: dagron_core::DagronError) -> pyo3::PyErr {
@@ -47,6 +53,7 @@ pub fn into_pyerr(err: dagron_core::DagronError) -> pyo3::PyErr {
         dagron_core::DagronError::EdgeNotFound(from, to) => {
             EdgeNotFoundError::new_err(format!("{from} -> {to}"))
         }
+        dagron_core::DagronError::StaleNodeRef(msg) => StaleNodeRefError::new_err(msg),
         dagron_core::DagronError::Graph(msg) => GraphError::new_err(msg),
     }
 }

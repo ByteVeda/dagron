@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from dagron._internal import DAG
+from dagron._internal import DAG, NodeRef
 from dagron.contracts import ContractViolation
 
 class DAGBuilder:
@@ -17,14 +17,14 @@ class DAGBuilder:
     ) -> DAGBuilder: ...
     def add_edge(
         self,
-        from_node: str,
-        to_node: str,
+        from_node: str | NodeRef,
+        to_node: str | NodeRef,
         weight: float | None = None,
         label: str | None = None,
     ) -> DAGBuilder: ...
     def contract(
         self,
-        node: str,
+        node: str | NodeRef,
         *,
         inputs: dict[str, type] | None = None,
         output: type = ...,

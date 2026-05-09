@@ -137,7 +137,7 @@ class DistributedExecutor:
                 try:
                     value = self._backend.result(future, timeout=self._node_timeout)
                     duration = time.monotonic() - t0
-                    nr = NodeResult(
+                    nr: NodeResult[Any] = NodeResult(
                         name=name,
                         status=NodeStatus.COMPLETED,
                         result=value,

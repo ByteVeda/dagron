@@ -15,8 +15,10 @@ from dagron._internal import (
     NodeIterator,
     NodeLevelIterator,
     NodeNotFoundError,
+    NodeRef,
     ReachabilityIndex,
     ScheduledNode,
+    StaleNodeRefError,
 )
 from dagron._patches import apply_patches as _apply_patches
 from dagron.analysis import (
@@ -48,6 +50,7 @@ from dagron.dataframe import (
     validate_schema,
 )
 from dagron.display import pretty_print
+from dagron.effects import Effect, effects_of
 from dagron.execution import (
     ApprovalGate,
     AsyncDAGExecutor,
@@ -98,6 +101,7 @@ from dagron.execution import (
     profile_execution,
     task,
 )
+from dagron.flow import Flow, FlowFuture, flow
 from dagron.integration import from_records
 from dagron.plugins import (
     DagronPlugin,
@@ -162,11 +166,14 @@ __all__ = [
     "DynamicModification",
     "DynamicNodeSpec",
     "EdgeNotFoundError",
+    "Effect",
     "ExecutionCallbacks",
     "ExecutionPlan",
     "ExecutionResult",
     "ExecutionStep",
     "ExecutionTrace",
+    "Flow",
+    "FlowFuture",
     "GateController",
     "GateRejectedError",
     "GateStatus",
@@ -195,6 +202,7 @@ __all__ = [
     "NodeLevelIterator",
     "NodeNotFoundError",
     "NodeProfile",
+    "NodeRef",
     "NodeResult",
     "NodeStatus",
     "PartitionedDAGExecutor",
@@ -211,6 +219,7 @@ __all__ = [
     "ResourceTimeline",
     "ScheduledNode",
     "SchemaViolation",
+    "StaleNodeRefError",
     "TemplateError",
     "TemplateParam",
     "ThreadBackend",
@@ -219,7 +228,9 @@ __all__ = [
     "VersionedDAG",
     "WhatIfResult",
     "compose",
+    "effects_of",
     "extract_contracts",
+    "flow",
     "from_records",
     "pretty_print",
     "profile_execution",

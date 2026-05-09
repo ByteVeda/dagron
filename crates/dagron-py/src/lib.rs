@@ -9,6 +9,7 @@ pub mod introspection;
 pub mod iterators;
 pub mod matching;
 pub mod node;
+pub mod noderef;
 pub mod partition;
 pub mod paths;
 pub mod payload;
@@ -29,6 +30,7 @@ use pyo3::prelude::*;
 fn dagron(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<dag::PyDAG>()?;
     m.add_class::<node::PyNodeId>()?;
+    m.add_class::<node::PyNodeRef>()?;
     m.add_class::<scheduling::PyScheduledNode>()?;
     m.add_class::<scheduling::PyExecutionStep>()?;
     m.add_class::<scheduling::PyExecutionPlan>()?;
@@ -59,6 +61,10 @@ fn dagron(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.py().get_type::<errors::EdgeNotFoundError>(),
     )?;
     m.add("GraphError", m.py().get_type::<errors::GraphError>())?;
+    m.add(
+        "StaleNodeRefError",
+        m.py().get_type::<errors::StaleNodeRefError>(),
+    )?;
 
     Ok(())
 }

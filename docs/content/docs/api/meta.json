@@ -1,0 +1,12 @@
+{
+  "title": "API Reference",
+  "root": true,
+  "pages": [
+    "index",
+    "core",
+    "execution",
+    "observability",
+    "analysis",
+    "utilities"
+  ]
+}

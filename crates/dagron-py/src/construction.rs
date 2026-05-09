@@ -3,7 +3,8 @@ use pyo3::types::PyList;
 
 use crate::dag::PyDAG;
 use crate::errors;
-use crate::node::PyNodeId;
+use crate::node::PyNodeRef;
+use crate::noderef::NodeArg;
 use crate::payload::PyNodePayload;
 
 #[pymethods]
@@ -16,7 +17,8 @@ impl PyDAG {
     ///     metadata: Optional metadata Python object.
     ///
     /// Returns:
-    ///     NodeId for the newly created node.
+    ///     A NodeRef for the newly created node. NodeRef is a stable handle
+    ///     that can be passed to any method that accepts a node identifier.
     ///
     /// Raises:
     ///     DuplicateNodeError: If a node with this name already exists.
@@ -26,13 +28,19 @@ impl PyDAG {
         name: String,
         payload: Option<Py<PyAny>>,
         metadata: Option<Py<PyAny>>,
-    ) -> PyResult<PyNodeId> {
+    ) -> PyResult<PyNodeRef> {
         let py_payload = PyNodePayload { payload, metadata };
-        let node_id = self
+        let node_ref = self
             .inner
             .add_node(name, py_payload)
             .map_err(errors::into_pyerr)?;
-        Ok(node_id.into())
+        Ok(node_ref.into())
+    }
+
+    /// Look up the current NodeRef for a given name, returning None if no
+    /// node with that name exists.
+    pub fn node_ref(&self, name: &str) -> Option<PyNodeRef> {
+        self.inner.node_ref(name).map(PyNodeRef::from)
     }
 
     /// Add multiple nodes at once. More efficient than repeated add_node calls.
@@ -41,11 +49,11 @@ impl PyDAG {
     ///     nodes: List of node names (strings) or (name, payload) tuples or (name, payload, metadata) tuples.
     ///
     /// Returns:
-    ///     List of NodeId objects.
+    ///     List of NodeRef objects.
     ///
     /// Raises:
     ///     DuplicateNodeError: If any node name already exists.
-    pub fn add_nodes(&mut self, nodes: &Bound<'_, PyList>) -> PyResult<Vec<PyNodeId>> {
+    pub fn add_nodes(&mut self, nodes: &Bound<'_, PyList>) -> PyResult<Vec<PyNodeRef>> {
         let mut result = Vec::with_capacity(nodes.len());
         for item in nodes.iter() {
             if let Ok(name) = item.extract::<String>() {
@@ -68,32 +76,30 @@ impl PyDAG {
     /// Add a directed edge from one node to another.
     ///
     /// Args:
-    ///     from_node: Name of the source node.
-    ///     to_node: Name of the target node.
+    ///     from_node: Source node — accepts either a string name or a NodeRef.
+    ///     to_node: Target node — accepts either a string name or a NodeRef.
     ///     weight: Optional edge weight (default 1.0).
     ///     label: Optional edge label.
     ///
     /// Raises:
     ///     NodeNotFoundError: If either node doesn't exist.
+    ///     StaleNodeRefError: If a NodeRef points to a removed/replaced node.
     ///     CycleError: If the edge would create a cycle.
     #[pyo3(signature = (from_node, to_node, weight=None, label=None))]
     pub fn add_edge(
         &mut self,
         py: Python<'_>,
-        from_node: &str,
-        to_node: &str,
+        from_node: NodeArg,
+        to_node: NodeArg,
         weight: Option<f64>,
         label: Option<String>,
     ) -> PyResult<()> {
+        let from = from_node.into_name(&self.inner)?;
+        let to = to_node.into_name(&self.inner)?;
+
         // Resolve names first while we have &self
-        let from_idx = self
-            .inner
-            .resolve_name(from_node)
-            .map_err(errors::into_pyerr)?;
-        let to_idx = self
-            .inner
-            .resolve_name(to_node)
-            .map_err(errors::into_pyerr)?;
+        let from_idx = self.inner.resolve_name(&from).map_err(errors::into_pyerr)?;
+        let to_idx = self.inner.resolve_name(&to).map_err(errors::into_pyerr)?;
 
         // Check for cycle — release GIL for the graph traversal
         let graph_ref = self.inner.inner_graph();
@@ -109,8 +115,8 @@ impl PyDAG {
             return Err(errors::into_pyerr(dagron_core::DagronError::Cycle(
                 format!(
                     "Edge {} -> {} would create a cycle: {}",
-                    from_node,
-                    to_node,
+                    from,
+                    to,
                     names.join(" -> ")
                 ),
             )));
@@ -130,25 +136,26 @@ impl PyDAG {
     /// Add multiple edges at once.
     ///
     /// Args:
-    ///     edges: List of (from, to) tuples, optionally with weight and label:
-    ///            (from, to), (from, to, weight), or (from, to, weight, label).
+    ///     edges: List of (from, to) tuples (either strings or NodeRefs),
+    ///            optionally with weight and label.
     ///
     /// Raises:
     ///     NodeNotFoundError: If any referenced node doesn't exist.
     ///     CycleError: If any edge would create a cycle.
     pub fn add_edges(&mut self, py: Python<'_>, edges: &Bound<'_, PyList>) -> PyResult<()> {
         for item in edges.iter() {
-            if let Ok((from, to)) = item.extract::<(String, String)>() {
-                self.add_edge(py, &from, &to, None, None)?;
-            } else if let Ok((from, to, weight)) = item.extract::<(String, String, f64)>() {
-                self.add_edge(py, &from, &to, Some(weight), None)?;
-            } else if let Ok((from, to, weight, label)) =
-                item.extract::<(String, String, f64, String)>()
+            // Try the largest tuple first so we don't lose weight/label.
+            if let Ok((from, to, weight, label)) = item.extract::<(NodeArg, NodeArg, f64, String)>()
             {
-                self.add_edge(py, &from, &to, Some(weight), Some(label))?;
+                self.add_edge(py, from, to, Some(weight), Some(label))?;
+            } else if let Ok((from, to, weight)) = item.extract::<(NodeArg, NodeArg, f64)>() {
+                self.add_edge(py, from, to, Some(weight), None)?;
+            } else if let Ok((from, to)) = item.extract::<(NodeArg, NodeArg)>() {
+                self.add_edge(py, from, to, None, None)?;
             } else {
                 return Err(pyo3::exceptions::PyTypeError::new_err(
-                    "Each edge must be a (from, to), (from, to, weight), or (from, to, weight, label) tuple",
+                    "Each edge must be a (from, to), (from, to, weight), or (from, to, weight, label) tuple. \
+                     `from` and `to` may be a str or NodeRef.",
                 ));
             }
         }
@@ -158,26 +165,29 @@ impl PyDAG {
     /// Remove a node and all its incident edges.
     ///
     /// Args:
-    ///     name: Name of the node to remove.
+    ///     node: Node to remove (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If the node doesn't exist.
-    pub fn remove_node(&mut self, name: &str) -> PyResult<()> {
-        self.inner.remove_node(name).map_err(errors::into_pyerr)
+    pub fn remove_node(&mut self, node: NodeArg) -> PyResult<()> {
+        let name = node.into_name(&self.inner)?;
+        self.inner.remove_node(&name).map_err(errors::into_pyerr)
     }
 
     /// Remove an edge between two nodes.
     ///
     /// Args:
-    ///     from_node: Name of the source node.
-    ///     to_node: Name of the target node.
+    ///     from_node: Source node (str or NodeRef).
+    ///     to_node: Target node (str or NodeRef).
     ///
     /// Raises:
     ///     NodeNotFoundError: If either node doesn't exist.
     ///     EdgeNotFoundError: If no edge exists between the nodes.
-    pub fn remove_edge(&mut self, from_node: &str, to_node: &str) -> PyResult<()> {
+    pub fn remove_edge(&mut self, from_node: NodeArg, to_node: NodeArg) -> PyResult<()> {
+        let from = from_node.into_name(&self.inner)?;
+        let to = to_node.into_name(&self.inner)?;
         self.inner
-            .remove_edge(from_node, to_node)
+            .remove_edge(&from, &to)
             .map_err(errors::into_pyerr)
     }
 

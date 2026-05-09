@@ -29,9 +29,15 @@ repos:
         language: system
         types: [rust]
         pass_filenames: false
-      - id: biome
-        name: biome
-        entry: bash -c 'cd docs && npx biome ci src/ docusaurus.config.ts sidebars.ts'
+      - id: docs-biome
+        name: docs biome
+        entry: bash -c 'cd docs && pnpm exec biome check'
         language: system
-        files: ^docs/src/|^docs/docusaurus\.config\.ts|^docs/sidebars\.ts
+        files: ^docs/(src/|content/|source\.config\.ts|next\.config\.mjs|biome\.json|tsconfig\.json|package\.json)
+        pass_filenames: false
+      - id: docs-types
+        name: docs types
+        entry: bash -c 'cd docs && pnpm types:check'
+        language: system
+        files: ^docs/(src/|source\.config\.ts|next\.config\.mjs|tsconfig\.json|package\.json|content/.*\.mdx)
         pass_filenames: false
