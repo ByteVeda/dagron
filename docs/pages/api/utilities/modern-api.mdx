@@ -1,0 +1,199 @@
+---
+sidebar_position: 7
+title: Modern API (NodeRef, flow, reactive, contentcache, trace)
+description: API reference for the typed-handles + uniqueness modules — dagron.NodeRef, dagron.flow, dagron.Effect, dagron.reactive, dagron.contentcache, dagron.trace, dagron.stubgen.
+---
+
+# Modern API
+
+API reference for the typed-handles and uniqueness modules. For a
+walkthrough of how they compose, see the
+[Typed Handles & Reactive Engine](../../guide/typed-and-reactive) guide.
+
+## `dagron.NodeRef`
+
+```python
+class NodeRef:
+    name: str
+    epoch: int
+```
+
+Stable handle returned by `DAG.add_node()`. Survives unrelated graph
+mutations; invalidated only when the underlying node is removed (or
+remove-and-readded with the same name, which yields a fresh epoch).
+
+```python
+dag.node_ref(name: str) -> NodeRef | None
+```
+
+Look up the current ref for a name without mutating the DAG.
+
+Every public method that previously took `name: str` now takes `NodeArg = str | NodeRef`:
+`add_edge`, `remove_node`, `has_node`, `has_edge`, `get_payload`, `set_payload`,
+`predecessors`, `successors`, `ancestors`, `descendants`, `subgraph`,
+`subgraph_by_depth`, `collapse`, `dominator_tree`, `all_paths`,
+`shortest_path`, `longest_path`, `dirty_set`, `change_provenance`,
+`is_ancestor`, and the `ReachabilityIndex` query methods.
+
+Stale refs raise `dagron.StaleNodeRefError`.
+
+## `dagron.flow`
+
+```python
+@dagron.task
+def fn(...) -> T: ...
+
+@dagron.task(effect=Effect.NETWORK)
+def fn(...) -> T: ...
+
+@dagron.flow
+def pipeline(...) -> FlowFuture[T] | None: ...
+```
+
+| Member | Purpose |
+|---|---|
+| `task` | Decorator. Outside a `@flow`, executes normally. Inside one, records the call and returns `FlowFuture[R]`. Supports `effect=` keyword (defaults to `Effect.PURE`). |
+| `flow` | Decorator. Wraps a function as a `Flow`. |
+| `Flow.dag()` | Trace the body and return the built `DAG`. |
+| `Flow.run(*args, **kwargs)` | Trace, build, execute synchronously → `ExecutionResult`. |
+| `Flow.run_async(...)` | Async variant. |
+| `Flow.__call__(...)` | Sugar for `run`. |
+| `FlowFuture[T]` | Generic placeholder returned from `@task` calls inside a `@flow`. Pass to other tasks to wire deps. |
+| `TaskSpec` | Metadata attached to every `@task` (`name`, `fn`, `dependencies`, `is_async`, `effect`). |
+
+`batch()` semantics aren't part of `dagron.flow` — they live in
+[`dagron.reactive`](#dagronreactive).
+
+## `dagron.Effect`
+
+```python
+class Effect(Enum):
+    PURE              = "pure"
+    READ              = "read"
+    WRITE             = "write"
+    NETWORK           = "network"
+    NONDETERMINISTIC  = "nondeterministic"
+
+    is_cacheable: bool
+    is_deterministic: bool
+    is_isolated: bool
+```
+
+```python
+def effects_of(dag: DAG) -> dict[str, Effect]
+```
+
+Read every node's effect tag from a DAG built by `@dagron.flow`. Returns
+`Effect.PURE` for nodes without a tag.
+
+`DAGExecutor(enforce_effect_isolation=True)` reads these tags and runs
+`NONDETERMINISTIC` nodes through a shared lock, so they don't overlap.
+
+## `dagron.reactive`
+
+```python
+import dagron.reactive as dr
+
+s = dr.signal(value)              # → Signal[T]
+c = dr.computed(lambda: ...)      # → Computed[T]
+w = dr.watch(lambda: ...)         # → Watcher (also fires once now)
+with dr.batch(): ...              # glitch-free coalesced updates
+```
+
+| Member | API |
+|---|---|
+| `Signal[T]` | `__call__() -> T`, `set(v: T)`, `peek() -> T` (no tracking). Equality-checked sets are no-ops. |
+| `Computed[T]` | `__call__() -> T`, `peek() -> T`. Lazy memoised. |
+| `Watcher` | Auto-fires when any tracked dep changes. `.dispose()` to detach. |
+| `batch()` | Context manager. Defers Watcher fires until the outermost block ends. Multiple signal mutations coalesce into one fire. |
+| `signal()` / `computed()` / `watch()` | Convenience factories. |
+
+Track via thread-local; reads inside a `Computed` body or `Watcher` body
+register the source as a dep. Observers are held by `weakref.WeakSet`
+so dropped derived nodes don't leak.
+
+## `dagron.contentcache`
+
+```python
+from dagron.contentcache import ContentCache, default_cache_dir
+
+cache = ContentCache(cache_dir=None, hasher=None)
+cache.compute_or_cached(fn, args=(), kwargs=None, effect=None) -> tuple[Any, bool]
+cache.get(fingerprint: bytes) -> tuple[Any, bool]
+cache.put(fingerprint: bytes, value: Any) -> None
+cache.has(fingerprint: bytes) -> bool
+cache.delete(fingerprint: bytes) -> None
+cache.clear() -> None
+cache.hash(value: Any) -> bytes      # delegates to the configured Hasher
+```
+
+| Helper | Purpose |
+|---|---|
+| `default_cache_dir()` | `$DAGRON_CACHE_DIR` or `~/.cache/dagron/cas`. |
+| `default_hash(value)` | pickle + blake2b 256-bit. Falls back to `repr()` for unpickleable inputs. |
+| `numpy_hash(value)` | `array.tobytes()` for numpy arrays; falls back to `default_hash`. |
+| `fingerprint_function(fn)` | Hashes `co_code`, `co_consts`, `co_freevars`, qualname, Python major.minor. |
+| `fingerprint_node(fn, effect, input_fingerprints)` | Composite fingerprint used as the cache key. |
+
+`compute_or_cached` is **effect-aware**: `WRITE` / `NETWORK` /
+`NONDETERMINISTIC` skip the cache entirely; `PURE` and `READ` go through
+it.
+
+Storage layout: `<cache_dir>/<aa>/<bb>/<rest>.cache` where the
+fingerprint hex is `<aa><bb><rest>`. POSIX `rename(2)` makes writes
+atomic. The filesystem itself is the index — independent processes
+share intermediates with no coordination.
+
+## `dagron.trace`
+
+```python
+from dagron.trace import TraceWriter, TraceReader, TraceRecord, ReplayedNode, replay
+
+writer = TraceWriter(path, cas=None)
+writer.record(name, *, value=None, effect=None, duration_ns=0,
+              error=None, metadata=None, timestamp=None) -> TraceRecord
+writer.flush()
+writer.close()                # also via context manager
+
+reader = TraceReader(path, cas=None)
+reader.records() -> Iterator[TraceRecord]
+reader.records_until(t, *, inclusive=True) -> Iterator[TraceRecord]
+reader.timeline() -> list[tuple[float, str]]
+reader.fetch(rec) -> Any      # resolves payload via the CAS
+
+replay(source, *, at=None, cas=None) -> dict[str, ReplayedNode]
+```
+
+`ReplayedNode` carries `name`, `timestamp`, `value`, `effect`,
+`replayable`, `duration_ns`, `error`, and a derived `has_value`
+property. `replayable` mirrors `effect.is_deterministic`: pure / READ
+nodes can be reproduced; impure nodes' values are *what that run
+produced*, not what a fresh run would produce.
+
+| Helper | Purpose |
+|---|---|
+| `default_trace_dir()` | `$DAGRON_TRACE_DIR` or `~/.cache/dagron/traces`. |
+| `new_run_id()` | 16-hex-char random id for naming a run's log file. |
+| `list_runs(trace_dir=None)` | Every `*.jsonl` under `trace_dir`. |
+
+Logs are append-only JSONL. Payloads live in the bound `ContentCache`,
+deduplicated across runs that produced the same value.
+
+## `dagron.stubgen`
+
+```python
+from dagron.stubgen import generate_stub
+
+generate_stub(
+    dag,
+    *,
+    type_hints: dict[str, type | str] | None = None,
+    tasks: dict[str, Callable] | None = None,
+    name: str = "TypedExecutionResult",
+) -> str
+```
+
+Emits `.pyi`-formatted source declaring a class with `Literal["nodename"]`
+overloads typed by inferred (or explicitly provided) return types.
+Drop the result into a stub file alongside your code so even string-keyed
+`result["nodename"]` lookups become statically typed.

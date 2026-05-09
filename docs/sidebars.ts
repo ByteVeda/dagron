@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', title: 'User Guide', slug: '/guide' },
       items: [
         'guide/getting-started',
+        'guide/typed-and-reactive',
         'guide/benchmarks',
         'guide/cookbook',
         {
@@ -124,6 +125,7 @@ const sidebars: SidebarsConfig = {
             'api/utilities/display',
             'api/utilities/integration',
             'api/utilities/plugins',
+            'api/utilities/modern-api',
           ],
         },
       ],
