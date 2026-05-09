@@ -1,6 +1,6 @@
 [package]
 name = "dagron-core"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.83"
 description = "Fast DAG construction, analysis, and scheduling engine"
