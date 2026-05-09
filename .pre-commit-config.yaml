@@ -31,7 +31,7 @@ repos:
         pass_filenames: false
       - id: biome
         name: biome
-        entry: bash -c 'cd docs && npx biome ci src/ docusaurus.config.ts sidebars.ts'
+        entry: bash -c 'cd docs && pnpm exec biome check'
         language: system
-        files: ^docs/src/|^docs/docusaurus\.config\.ts|^docs/sidebars\.ts
+        files: ^docs/(src/|content/|source\.config\.ts|next\.config\.mjs|biome\.json)
         pass_filenames: false

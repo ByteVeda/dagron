@@ -1,41 +1,51 @@
-# Website
+# dagron docs (Fumadocs)
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+Side-by-side replacement for `../docs/` (Docusaurus). Once verified, this
+directory will be swapped in as `docs/`.
 
-### Installation
+## Develop
 
-```
-$ yarn
-```
-
-### Local Development
-
-```
-$ yarn start
+```bash
+pnpm install
+pnpm dev          # http://localhost:3000
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## Build for GitHub Pages
 
-### Build
-
-```
-$ yarn build
-```
-
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
+```bash
+DOCS_BASE_PATH=/dagron pnpm build
+npx serve out/    # then visit http://localhost:3000/dagron/
 ```
 
-Not using SSH:
+Local builds without `DOCS_BASE_PATH` serve cleanly from `/`.
+
+## Lint & types
+
+```bash
+pnpm lint         # biome
+pnpm types:check  # fumadocs-mdx + next typegen + tsc --noEmit
+```
+
+## Layout
 
 ```
-$ GIT_USER=<Your GitHub username> yarn deploy
+src/
+├── app/              # Next.js App Router
+│   ├── (home)/       # marketing landing
+│   ├── (docs)/       # docs sidebar + page renderer
+│   └── api/          # Orama search endpoint, llms.txt routes
+├── components/
+│   ├── ui/           # generic primitives (Button, CodePanel, SectionHeader)
+│   ├── mdx.tsx       # global MDX component map
+│   ├── mermaid.tsx   # client-side mermaid with theme awareness
+│   └── ...           # dagron-specific (DagDiagram, StatusBadge, FeatureCard, …)
+└── lib/
+    ├── source.ts     # Fumadocs source loader
+    ├── shared.ts     # appName, gitConfig, route constants
+    └── layout.shared.tsx  # nav + sidebar config
+
+content/docs/         # 54 MDX files, organised by guide/ + api/
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Components are registered globally in `src/components/mdx.tsx`, so MDX
+authors don't need to write `import` lines.
