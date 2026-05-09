@@ -3,6 +3,11 @@ name = "dagron-core"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.83"
+description = "Fast DAG construction, analysis, and scheduling engine"
+license = "MIT"
+repository = "https://github.com/ByteVeda/dagron"
+keywords = ["dag", "graph", "scheduling", "workflow", "petgraph"]
+categories = ["algorithms", "data-structures"]
 
 [lib]
 name = "dagron_core"
