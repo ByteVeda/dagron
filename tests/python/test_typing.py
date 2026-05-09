@@ -177,11 +177,13 @@ def test_mypy_reveal_types(tmp_path: Path) -> None:
             return total(raw)
 
         result: ExecutionResult = pipeline()
-        reveal_type(result[fetch_future])    # noqa: F821 — illustrative
+        reveal_type(result[fetch_future])    # noqa: F821 - illustrative
         """
     )
     target = tmp_path / "snippet.py"
-    target.write_text(snippet)
+    # Force UTF-8 — Python on Windows defaults to CP1252, but mypy reads the
+    # file as UTF-8 and chokes on any non-ASCII byte.
+    target.write_text(snippet, encoding="utf-8")
 
     proc = subprocess.run(
         ["mypy", "--ignore-missing-imports", str(target)],
