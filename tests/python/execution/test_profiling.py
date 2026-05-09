@@ -5,7 +5,10 @@ import time
 from dagron import DAG, DAGExecutor, NodeProfile, ProfileReport, profile_execution
 
 
-def _delayed(value: str, seconds: float = 0.01) -> str:
+def _delayed(value: str, seconds: float = 0.05) -> str:
+    # Windows' time.monotonic() has ~16 ms granularity; use 50 ms so every
+    # node's measured duration is non-zero and the critical path includes
+    # all of them, not just the ones whose sleep happened to straddle a tick.
     time.sleep(seconds)
     return value
 
