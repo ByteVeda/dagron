@@ -16,5 +16,5 @@ pub use graph::serialization::{SerializableEdge, SerializableGraph, Serializable
 pub use graph::stats::GraphStats;
 pub use graph::transforms::MergeConflict;
 pub use graph::DAG;
-pub use node::NodeId;
+pub use node::{NodeId, NodeRef};
 pub use types::{EdgeData, InternalGraph, InternalNodeIndex, NodeData};

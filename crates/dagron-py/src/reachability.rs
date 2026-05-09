@@ -5,6 +5,7 @@ use dagron_core::types::InternalNodeIndex;
 
 use crate::dag::PyDAG;
 use crate::errors;
+use crate::noderef::NodeArg;
 
 /// Precomputed reachability index for O(1) ancestor/descendant queries.
 ///
@@ -24,26 +25,26 @@ impl PyReachabilityIndex {
     /// Check if `from_node` can reach `to_node` in O(1).
     ///
     /// Args:
-    ///     from_node: Source node name.
-    ///     to_node: Target node name.
+    ///     from_node: Source node (str or NodeRef).
+    ///     to_node: Target node (str or NodeRef).
     ///
     /// Returns:
     ///     True if from_node can reach to_node.
-    pub fn can_reach(&self, from_node: &str, to_node: &str) -> PyResult<bool> {
-        let from_idx = self.resolve(from_node)?;
-        let to_idx = self.resolve(to_node)?;
+    pub fn can_reach(&self, from_node: NodeArg, to_node: NodeArg) -> PyResult<bool> {
+        let from_idx = self.resolve(from_node.name_str())?;
+        let to_idx = self.resolve(to_node.name_str())?;
         Ok(self.inner.can_reach(from_idx, to_idx))
     }
 
     /// All nodes reachable from `node` (excluding self).
     ///
     /// Args:
-    ///     node: Node name.
+    ///     node: Node (str or NodeRef).
     ///
     /// Returns:
     ///     List of reachable node names.
-    pub fn reachable_from(&self, node: &str) -> PyResult<Vec<String>> {
-        let idx = self.resolve(node)?;
+    pub fn reachable_from(&self, node: NodeArg) -> PyResult<Vec<String>> {
+        let idx = self.resolve(node.name_str())?;
         Ok(self
             .inner
             .reachable_from(idx)
@@ -55,12 +56,12 @@ impl PyReachabilityIndex {
     /// All nodes that can reach `node` (excluding self).
     ///
     /// Args:
-    ///     node: Node name.
+    ///     node: Node (str or NodeRef).
     ///
     /// Returns:
     ///     List of ancestor node names.
-    pub fn ancestors_of(&self, node: &str) -> PyResult<Vec<String>> {
-        let idx = self.resolve(node)?;
+    pub fn ancestors_of(&self, node: NodeArg) -> PyResult<Vec<String>> {
+        let idx = self.resolve(node.name_str())?;
         Ok(self
             .inner
             .ancestors_of(idx)
@@ -128,11 +129,13 @@ impl PyDAG {
     pub fn is_ancestor(
         &self,
         py: Python<'_>,
-        ancestor: String,
-        descendant: String,
+        ancestor: NodeArg,
+        descendant: NodeArg,
     ) -> PyResult<bool> {
+        let a = ancestor.into_name(&self.inner)?;
+        let d = descendant.into_name(&self.inner)?;
         let inner_ref = &self.inner;
-        py.allow_threads(|| inner_ref.is_ancestor(&ancestor, &descendant))
+        py.allow_threads(|| inner_ref.is_ancestor(&a, &d))
             .map_err(errors::into_pyerr)
     }
 }

@@ -1,6 +1,6 @@
 use crate::algorithms;
 use crate::errors::DagronError;
-use crate::node::NodeId;
+use crate::node::NodeRef;
 use crate::types::EdgeData;
 
 use super::DAG;
@@ -8,9 +8,12 @@ use super::DAG;
 impl<P> DAG<P> {
     /// Add a single node to the graph.
     ///
-    /// Returns NodeId for the newly created node.
-    /// Returns DagronError::DuplicateNode if a node with this name already exists.
-    pub fn add_node(&mut self, name: String, payload: P) -> Result<NodeId, DagronError> {
+    /// Returns a [`NodeRef`] for the newly created node. The ref is stable —
+    /// it remains valid across edge mutations and other-node changes, and is
+    /// invalidated only if this node is removed.
+    ///
+    /// Returns `DagronError::DuplicateNode` if a node with this name already exists.
+    pub fn add_node(&mut self, name: String, payload: P) -> Result<NodeRef, DagronError> {
         if self.name_to_index.contains_key(&name) {
             return Err(DagronError::DuplicateNode(name));
         }
@@ -19,12 +22,12 @@ impl<P> DAG<P> {
             payload,
         };
         let idx = self.graph.add_node(node_data);
+        let epoch = self.next_node_epoch;
+        self.next_node_epoch = self.next_node_epoch.wrapping_add(1);
         self.name_to_index.insert(name.clone(), idx);
+        self.node_epochs.insert(name.clone(), epoch);
         self.bump_generation();
-        Ok(NodeId {
-            index: idx.index() as u32,
-            name,
-        })
+        Ok(NodeRef::new(name, epoch))
     }
 
     /// Add a directed edge from one node to another.
@@ -71,6 +74,7 @@ impl<P> DAG<P> {
         let idx = self.resolve_name(name)?;
         self.graph.remove_node(idx);
         self.name_to_index.remove(name);
+        self.node_epochs.remove(name);
         self.bump_generation();
         Ok(())
     }

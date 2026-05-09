@@ -21,11 +21,17 @@ use std::sync::RwLock;
 use ahash::AHashMap;
 
 use crate::errors::DagronError;
+use crate::node::NodeRef;
 use crate::types::{InternalGraph, InternalNodeIndex};
 
 pub struct DAG<P = ()> {
     pub(crate) graph: InternalGraph<P>,
     pub(crate) name_to_index: AHashMap<String, InternalNodeIndex>,
+    /// Per-node creation epoch — used to validate `NodeRef`s against
+    /// remove/re-add cycles. The entry is removed when the node is removed.
+    pub(crate) node_epochs: AHashMap<String, u64>,
+    /// Monotonic counter; assigned to each newly created node.
+    pub(crate) next_node_epoch: u64,
     generation: u64,
     pub(crate) cache: RwLock<cache::DagCache>,
 }
@@ -35,6 +41,8 @@ impl<P> DAG<P> {
         DAG {
             graph: InternalGraph::default(),
             name_to_index: AHashMap::new(),
+            node_epochs: AHashMap::new(),
+            next_node_epoch: 0,
             generation: 0,
             cache: RwLock::new(cache::DagCache::new()),
         }
@@ -46,6 +54,30 @@ impl<P> DAG<P> {
             .get(name)
             .copied()
             .ok_or_else(|| DagronError::NodeNotFound(name.to_string()))
+    }
+
+    /// Resolve a `NodeRef` to its current index, validating that the node
+    /// still exists with the same creation epoch. Returns
+    /// `DagronError::NodeNotFound` if the node has been removed and
+    /// `DagronError::StaleNodeRef` if a different node now occupies the name.
+    pub fn resolve_ref(&self, r: &NodeRef) -> Result<InternalNodeIndex, DagronError> {
+        let stored_epoch = self
+            .node_epochs
+            .get(r.name.as_ref())
+            .ok_or_else(|| DagronError::NodeNotFound(r.name.to_string()))?;
+        if *stored_epoch != r.epoch {
+            return Err(DagronError::StaleNodeRef(r.name.to_string()));
+        }
+        self.name_to_index
+            .get(r.name.as_ref())
+            .copied()
+            .ok_or_else(|| DagronError::NodeNotFound(r.name.to_string()))
+    }
+
+    /// Look up the current `NodeRef` for a name, if it exists.
+    pub fn node_ref(&self, name: &str) -> Option<NodeRef> {
+        let epoch = *self.node_epochs.get(name)?;
+        Some(NodeRef::new(name, epoch))
     }
 
     /// Access the underlying petgraph.
@@ -160,6 +192,8 @@ impl<P: Clone> DAG<P> {
         DAG {
             graph: self.graph.clone(),
             name_to_index: self.name_to_index.clone(),
+            node_epochs: self.node_epochs.clone(),
+            next_node_epoch: self.next_node_epoch,
             generation: self.generation,
             cache: RwLock::new(cache::DagCache::new()),
         }

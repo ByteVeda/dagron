@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dagron._internal import DAG
+from dagron._internal import DAG, NodeRef
 
 if TYPE_CHECKING:
     from dagron.contracts import ContractViolation, NodeContract
+
+
+def _name_of(arg: str | NodeRef) -> str:
+    """Extract a node's name from either a string or a NodeRef."""
+    return arg.name if isinstance(arg, NodeRef) else arg
 
 
 class DAGBuilder:
@@ -50,28 +55,28 @@ class DAGBuilder:
 
     def add_edge(
         self,
-        from_node: str,
-        to_node: str,
+        from_node: str | NodeRef,
+        to_node: str | NodeRef,
         weight: float | None = None,
         label: str | None = None,
     ) -> DAGBuilder:
         """Add an edge to the builder.
 
         Args:
-            from_node: Source node name.
-            to_node: Target node name.
+            from_node: Source node — accepts a string name or a NodeRef.
+            to_node: Target node — accepts a string name or a NodeRef.
             weight: Optional edge weight.
             label: Optional edge label.
 
         Returns:
             self for chaining.
         """
-        self._edges.append((from_node, to_node, weight, label))
+        self._edges.append((_name_of(from_node), _name_of(to_node), weight, label))
         return self
 
     def contract(
         self,
-        node: str,
+        node: str | NodeRef,
         *,
         inputs: dict[str, type] | None = None,
         output: type = object,
@@ -88,7 +93,7 @@ class DAGBuilder:
         """
         from dagron.contracts import NodeContract
 
-        self._contracts[node] = NodeContract(
+        self._contracts[_name_of(node)] = NodeContract(
             inputs=inputs or {},
             output=output,
         )

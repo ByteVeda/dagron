@@ -46,10 +46,16 @@ from dagron._internal import (
     NodeNotFoundError as NodeNotFoundError,
 )
 from dagron._internal import (
+    NodeRef as NodeRef,
+)
+from dagron._internal import (
     ReachabilityIndex as ReachabilityIndex,
 )
 from dagron._internal import (
     ScheduledNode as ScheduledNode,
+)
+from dagron._internal import (
+    StaleNodeRefError as StaleNodeRefError,
 )
 from dagron.analysis import (
     DAGSchema as DAGSchema,
@@ -116,6 +122,8 @@ from dagron.dataframe import (
 from dagron.dataframe import (
     validate_schema as validate_schema,
 )
+from dagron.effects import Effect as Effect
+from dagron.effects import effects_of as effects_of
 from dagron.execution import (
     AsyncDAGExecutor as AsyncDAGExecutor,
 )
@@ -200,6 +208,9 @@ from dagron.execution import (
 from dagron.execution import (
     task as task,
 )
+from dagron.flow import Flow as Flow
+from dagron.flow import FlowFuture as FlowFuture
+from dagron.flow import flow as flow
 from dagron.versioning import (
     Mutation as Mutation,
 )

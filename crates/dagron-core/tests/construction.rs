@@ -14,10 +14,55 @@ fn diamond_dag() -> DAG {
 }
 
 #[test]
-fn add_node_returns_node_id() {
+fn add_node_returns_node_ref() {
     let mut dag = DAG::new();
-    let id = dag.add_node("alpha".into(), ()).unwrap();
-    assert_eq!(id.name, "alpha");
+    let r = dag.add_node("alpha".into(), ()).unwrap();
+    assert_eq!(r.name(), "alpha");
+    // resolve the ref back to confirm it's valid
+    assert!(dag.resolve_ref(&r).is_ok());
+}
+
+#[test]
+fn node_ref_survives_unrelated_mutations() {
+    let mut dag = DAG::new();
+    let a = dag.add_node("a".into(), ()).unwrap();
+    let _b = dag.add_node("b".into(), ()).unwrap();
+    dag.add_edge("a", "b", None, None).unwrap();
+    // unrelated mutations should NOT invalidate `a`
+    let _c = dag.add_node("c".into(), ()).unwrap();
+    dag.remove_node("b").unwrap();
+    assert!(dag.resolve_ref(&a).is_ok());
+}
+
+#[test]
+fn node_ref_invalidated_when_node_removed() {
+    let mut dag = DAG::new();
+    let a = dag.add_node("a".into(), ()).unwrap();
+    dag.remove_node("a").unwrap();
+    let err = dag.resolve_ref(&a).unwrap_err();
+    assert!(matches!(err, DagronError::NodeNotFound(name) if name == "a"));
+}
+
+#[test]
+fn node_ref_invalidated_when_name_reused() {
+    let mut dag = DAG::new();
+    let a1 = dag.add_node("a".into(), ()).unwrap();
+    dag.remove_node("a").unwrap();
+    let a2 = dag.add_node("a".into(), ()).unwrap();
+    // a2 is fine
+    assert!(dag.resolve_ref(&a2).is_ok());
+    // a1 is now stale (different epoch on the same name)
+    let err = dag.resolve_ref(&a1).unwrap_err();
+    assert!(matches!(err, DagronError::StaleNodeRef(name) if name == "a"));
+}
+
+#[test]
+fn node_ref_lookup_via_name() {
+    let mut dag = DAG::new();
+    let original = dag.add_node("foo".into(), ()).unwrap();
+    let looked_up = dag.node_ref("foo").unwrap();
+    assert_eq!(original, looked_up);
+    assert!(dag.node_ref("missing").is_none());
 }
 
 #[test]

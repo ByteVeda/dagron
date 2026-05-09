@@ -4,15 +4,15 @@ from dagron import (
     CycleError,
     DuplicateNodeError,
     EdgeNotFoundError,
-    NodeId,
     NodeNotFoundError,
+    NodeRef,
 )
 
 
 class TestAddNode:
     def test_add_single_node(self, empty_dag):
         node = empty_dag.add_node("a")
-        assert isinstance(node, NodeId)
+        assert isinstance(node, NodeRef)
         assert node.name == "a"
         assert empty_dag.node_count() == 1
 
@@ -35,7 +35,7 @@ class TestAddNode:
         nodes = empty_dag.add_nodes(["a", "b", "c"])
         assert len(nodes) == 3
         assert empty_dag.node_count() == 3
-        assert all(isinstance(n, NodeId) for n in nodes)
+        assert all(isinstance(n, NodeRef) for n in nodes)
 
     def test_add_nodes_with_payloads(self, empty_dag):
         nodes = empty_dag.add_nodes([("a", 1), ("b", 2)])
