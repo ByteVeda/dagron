@@ -47,7 +47,7 @@ jobs:
         run: cargo fmt --all --check
 
       - name: Run pre-commit
-        uses: pre-commit/action@v3
+        uses: pre-commit/action@v3.0.1
 
   rust-test:
     runs-on: ubuntu-latest
