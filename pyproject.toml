@@ -6,7 +6,32 @@ build-backend = "maturin"
 name = "dagron"
 version = "0.1.0"
 description = "A fast Rust-backed DAG engine for Python"
+readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "ByteVeda" }]
+keywords = ["dag", "graph", "scheduling", "workflow", "pipeline", "rust"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/ByteVeda/dagron"
+Repository = "https://github.com/ByteVeda/dagron"
+Documentation = "https://byteveda.github.io/dagron/"
+Issues = "https://github.com/ByteVeda/dagron/issues"
+Changelog = "https://github.com/ByteVeda/dagron/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 ray = ["ray>=2.0"]
