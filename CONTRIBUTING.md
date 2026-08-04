@@ -140,11 +140,18 @@ Both workflows trigger on the tag and are safe to re-run: each skips any
 version already present on its registry.
 
 After a successful crates.io publish, `publish-crates.yml` tags the commit it
-released as `crates-v<version>` — a separate namespace from the version tags
-that drive the release, so the two never collide. The tag is only ever created,
-never moved: if `crates-v<version>` already points somewhere else the job
-fails rather than rewriting it. This also makes `workflow_dispatch` runs
-traceable, since those are not driven by a tag in the first place.
+released as `crates-v<version>` — a separate namespace from the version tags,
+so the two never collide. The tag is only ever created, never moved: if
+`crates-v<version>` already points somewhere else the job fails rather than
+rewriting it. This makes `workflow_dispatch` runs traceable, since those are
+not driven by a tag in the first place.
+
+`crates-v*` is also accepted as a *trigger*, so pushing one releases the crates
+on their own without touching PyPI — useful when only the Rust side needs
+recutting. Both tag forms carry the same version; the workflow strips the
+prefix before checking it. Note that a `crates-v*` tag pushed by the workflow
+itself does not re-trigger it: GitHub suppresses workflow runs for refs pushed
+with the default `GITHUB_TOKEN`.
 
 The `Release readiness` suite also compiles the sdist in a clean environment
 on every PR. That matters because the sdist — not the wheels — is what users on
