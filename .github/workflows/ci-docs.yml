@@ -1,0 +1,29 @@
+name: CI Docs
+
+# Reusable workflow: docs site linting and type checking. Called by ci.yml
+# when docs-relevant paths change, so a Rust- or Python-only PR never pays
+# for a pnpm install.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (Docs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node + pnpm
+        uses: ./.github/actions/setup-node
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run docs hooks
+        uses: ./.github/actions/pre-commit
+        with:
+          skip: ruff-check,ruff-format,mypy,cargo-fmt,clippy

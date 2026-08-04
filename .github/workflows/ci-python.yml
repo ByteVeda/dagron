@@ -1,0 +1,74 @@
+name: CI Python
+
+# Reusable workflow: Python linting and the cross-platform pytest matrix.
+# Called by ci.yml when Python-relevant paths change.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (Python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python + uv
+        uses: ./.github/actions/setup-python
+
+      - name: Run Python hooks
+        uses: ./.github/actions/pre-commit
+        with:
+          skip: cargo-fmt,clippy,docs-biome,docs-types
+
+  test:
+    name: Tests (${{ matrix.os }} / Python ${{ matrix.python-version }})
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    # PRs run Linux on both versions plus one Windows cell — Windows is where
+    # the platform-specific failures have actually been. macOS and the
+    # remaining cells run on every push to master and on workflow_dispatch, so
+    # full coverage is delayed to merge, not lost.
+    strategy:
+      fail-fast: false
+      matrix: ${{ github.event_name == 'pull_request'
+        && fromJSON('{"os":["ubuntu-latest"],"python-version":["3.12","3.13"],"include":[{"os":"windows-latest","python-version":"3.13"}]}')
+        || fromJSON('{"os":["ubuntu-latest","macos-latest","windows-latest"],"python-version":["3.12","3.13"]}') }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python + uv
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          # Release-profile target/, kept in its own namespace so it does not
+          # evict the lint job's dev-profile cache. Master is the sole writer.
+          shared-key: release
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Build native extension
+        uses: PyO3/maturin-action@v1
+        with:
+          command: develop
+          args: --release
+
+      - name: Run tests
+        run: >-
+          uv run pytest tests/python/ -v --tb=short --junit-xml=results.xml
+          --ignore=tests/python/test_benchmarks.py
+          --ignore=tests/python/test_reactive_bench.py
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: results.xml
