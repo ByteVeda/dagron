@@ -5,52 +5,52 @@
 **A fast, Rust-backed DAG engine for Python.**
 
 [![CI](https://github.com/ByteVeda/dagron/actions/workflows/ci.yml/badge.svg)](https://github.com/ByteVeda/dagron/actions/workflows/ci.yml)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776ab?logo=python&logoColor=white)](https://python.org)
-[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-dea584?logo=rust&logoColor=white)](https://www.rust-lang.org)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/dagron?label=pypi)](https://pypi.org/project/dagron/)
 [![crates.io](https://img.shields.io/crates/v/dagron-core?label=crates.io)](https://crates.io/crates/dagron-core)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://byteveda.github.io/dagron/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776ab?logo=python&logoColor=white)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/ByteVeda/dagron/blob/master/LICENSE)
 
 Build, execute, and analyze directed acyclic graphs with a fluent Python API — powered by Rust and [petgraph](https://github.com/petgraph/petgraph) under the hood.
+
+**[Documentation](https://byteveda.github.io/dagron/)** · [Getting started](https://byteveda.github.io/dagron/guide/getting-started) · [Cookbook](https://byteveda.github.io/dagron/guide/cookbook) · [API reference](https://byteveda.github.io/dagron/api)
 
 </div>
 
 ---
 
-## Installation
+## Install
 
 ```bash
 pip install dagron
 ```
 
+Python 3.12+. Prebuilt wheels for Linux, macOS, and Windows.
+
 ## Quick start
 
-### Build a DAG
-
-Use the fluent `DAGBuilder` to construct graphs with payloads, metadata, and weighted edges:
+Write a normal Python function; the call structure becomes the DAG.
 
 ```python
-from dagron import DAGBuilder
+import dagron
 
-dag = (
-    DAGBuilder()
-    .add_node("a", payload=1)
-    .add_node("b", payload=2)
-    .add_node("c", payload=3)
-    .add_edge("a", "b")
-    .add_edge("a", "c")
-    .add_edge("b", "c")
-    .build()  # validates acyclicity at build time
-)
+@dagron.task
+def extract():
+    return [1, 2, 3]
 
-dag.node_count()       # 3
-dag.get_payload("a")   # 1
+@dagron.task
+def transform(rows):
+    return [r * 2 for r in rows]
+
+@dagron.flow
+def pipeline():
+    return transform(extract())
+
+result = pipeline()               # ExecutionResult
+result["transform"].result        # [2, 4, 6]
+pipeline.dag()                    # the underlying DAG, for analysis
 ```
 
-### Execute tasks
-
-Map callables to nodes and execute them in dependency order with automatic parallelism:
+Or build the graph explicitly and map callables onto it:
 
 ```python
 from dagron import DAGBuilder, DAGExecutor
@@ -62,144 +62,50 @@ dag = (
     .add_node("load")
     .add_edge("extract", "transform")
     .add_edge("transform", "load")
-    .build()
+    .build()                      # rejects cycles at build time
 )
 
-tasks = {
-    "extract":   lambda: fetch_data(),
-    "transform": lambda: clean_data(),
-    "load":      lambda: write_to_db(),
-}
+result = DAGExecutor(dag, max_workers=4).execute({
+    "extract": fetch_data,
+    "transform": clean_data,
+    "load": write_to_db,
+})
 
-result = DAGExecutor(dag, max_workers=4).execute(tasks)
-# result.succeeded  -> 3
-# result.node_results["extract"].result  -> return value of fetch_data()
+result.succeeded                  # 3
+result["extract"].result          # return value of fetch_data()
 ```
 
-### Async execution
+Swap in `AsyncDAGExecutor` for `asyncio` workloads. See
+[executing tasks](https://byteveda.github.io/dagron/guide/core-concepts/executing-tasks).
 
-Native `asyncio` support for I/O-bound workflows:
+## What's in it
 
-```python
-import asyncio
-from dagron import DAGBuilder, AsyncDAGExecutor
+| | |
+| --- | --- |
+| **[Building graphs](https://byteveda.github.io/dagron/guide/core-concepts/building-dags)** | Fluent builder, payloads and metadata, weighted edges, bulk insert, `from_records`. Cycles rejected on insertion, so every `DAG` is acyclic by construction. |
+| **[Ordering & scheduling](https://byteveda.github.io/dagron/guide/core-concepts/inspecting-graphs)** | Kahn and DFS topological sorts, level grouping, priority ordering, all-orderings enumeration, execution plans, critical path, cost-based schedules. |
+| **[Execution](https://byteveda.github.io/dagron/guide/core-concepts/executing-tasks)** | Thread-pool and `asyncio` executors with fail-fast, per-node timeouts, cancellation, lifecycle callbacks, and tracing. |
+| **[Execution strategies](https://byteveda.github.io/dagron/guide/execution-strategies/incremental)** | Incremental re-execution with early cutoff, content-addressable caching, checkpointing, conditional branches, dynamic mid-run expansion, approval gates, resource-aware scheduling, graph partitioning, distributed backends. |
+| **[Typed & reactive](https://byteveda.github.io/dagron/typed-and-reactive)** | Stable `NodeRef` handles, generic `NodeResult[T]`, stub generation for statically-typed string lookups, effect tags, a Solid.js-style reactive engine, and time-travel `replay(at=t)`. |
+| **[Analysis](https://byteveda.github.io/dagron/guide/core-concepts/transforms)** | Transforms (reverse, collapse, filter, merge, transitive reduction/closure, dominator tree), subgraph and path queries, O(1) reachability index, regex/glob node matching, stats and diffing. |
+| **[Observability](https://byteveda.github.io/dagron/guide/observability/tracing-profiling)** | Per-node timing exported to Chrome Tracing, bottleneck detection, ASCII and Graphviz rendering, inline SVG in Jupyter. |
+| **[Extending](https://byteveda.github.io/dagron/guide/advanced/plugins-hooks)** | Plugins via `entry_points`, a lifecycle hook registry, parameterized DAG templates, custom serializers and executors. |
 
-dag = (
-    DAGBuilder()
-    .add_node("fetch_users")
-    .add_node("fetch_orders")
-    .add_node("merge")
-    .add_edge("fetch_users", "merge")
-    .add_edge("fetch_orders", "merge")
-    .build()
-)
+Benchmarks against networkx: [guide/benchmarks](https://byteveda.github.io/dagron/guide/benchmarks). Why dagron: [guide/why-dagron](https://byteveda.github.io/dagron/guide/why-dagron).
 
-async def main():
-    tasks = {
-        "fetch_users":  lambda: fetch("/users"),
-        "fetch_orders": lambda: fetch("/orders"),
-        "merge":        lambda: merge_results(),
-    }
-    result = await AsyncDAGExecutor(dag).execute(tasks)
-    print(result.succeeded)  # 3
+## Rust crates
 
-asyncio.run(main())
-```
+The engine is usable directly from Rust:
 
-## Features
+| Crate | |
+| --- | --- |
+| [`dagron-core`](https://crates.io/crates/dagron-core) | Graph construction, analysis, and scheduling |
+| [`dagron-ui`](https://crates.io/crates/dagron-ui) | Live web dashboard for DAG execution |
 
-### Graph Construction
+## Contributing
 
-Create DAGs with `DAG()` or the fluent `DAGBuilder`. Add nodes with payloads and metadata, weighted edges, and bulk-insert via `add_nodes`/`add_edges`. Build graphs from tabular data with `from_records`.
-
-### Cycle Detection & Validation
-
-Cycles are automatically rejected on edge insertion, so every `DAG` is acyclic by construction. Call `validate()` for an explicit structural health-check at any time.
-
-### Topological Sorting
-
-Multiple algorithms to suit different needs: Kahn's (BFS), DFS, level-based grouping, priority-weighted ordering, and full enumeration of all valid orderings. Lazy iterators are available for memory-efficient traversal of large graphs.
-
-### Scheduling & Execution Plans
-
-Generate dependency-aware execution plans with `execution_plan` and `execution_plan_constrained`. Identify the `critical_path` through weighted graphs and produce cost-based schedules for resource-constrained environments.
-
-### Execution Engines
-
-`DAGExecutor` runs tasks in a thread pool with configurable workers, while `AsyncDAGExecutor` provides native `asyncio` support for I/O-bound workflows. Both support fail-fast error handling, per-node timeouts, cancellation, `on_start`/`on_complete`/`on_error` callbacks, and optional hook integration.
-
-### Incremental Computation
-
-`IncrementalExecutor` tracks a dirty set and re-executes only the nodes affected by changes. Early cutoff skips downstream work when a node's output hasn't changed, and change provenance records why each node was recomputed.
-
-### Graph Transforms
-
-Transform graphs with `reverse`, `collapse`, `filter`, `merge`, `transitive_reduction`, `transitive_closure`, and `dominator_tree`. Take immutable snapshots with `snapshot` for safe concurrent reads.
-
-### Subgraph & Path Algorithms
-
-Extract subgraphs by node set or by depth from a root. Compute `all_paths`, `shortest_path`, and `longest_path` between any two nodes.
-
-### Reachability
-
-`ReachabilityIndex` precomputes a compressed bitset index for O(1) ancestor/descendant queries. Use `is_ancestor` for quick relationship checks without repeated traversal.
-
-### Introspection
-
-Query predecessors, successors, ancestors, and descendants of any node. Inspect in/out degree, roots, and leaves. Lazy iterators keep memory usage low on large graphs. Full Python protocol support: `len`, `in`, `[]`, `iter`, and `bool`.
-
-### Node Matching
-
-Find nodes by name using regex or glob patterns — useful for selecting groups of related nodes in large graphs.
-
-### Statistics & Diffing
-
-`GraphStats` computes density, depth, width, connectivity metrics, and more. `GraphDiff` compares two DAGs and reports added, removed, and changed nodes and edges.
-
-### Serialization
-
-Export and import graphs as JSON, binary (bincode + memory-mapped files), Graphviz DOT, or Mermaid diagrams. Save to and load from files in any supported format.
-
-### Tracing & Profiling
-
-`ExecutionTrace` records per-node timing and exports to Chrome Tracing format for visualization. `profile_execution` identifies the critical path and detects bottleneck nodes.
-
-### Visualization
-
-ASCII `pretty_print` renders graphs in vertical or horizontal layout directly in the terminal. Jupyter notebooks get inline SVG rendering via Graphviz, DOT, or a built-in fallback renderer.
-
-### DAG Templates
-
-Define parameterized DAG blueprints with `DAGTemplate` and `{{placeholder}}` substitution. Render concrete DAGs, builders, or pipelines by supplying parameter values at runtime. Supports type validation, default values, custom validators, and configurable delimiters.
-
-### Plugin & Hook System
-
-Extend dagron with `DagronPlugin` subclasses discovered via `entry_points`. `HookRegistry` fires lifecycle events (`PRE_EXECUTE`, `POST_EXECUTE`, `PRE_NODE`, `POST_NODE`, `ON_ERROR`, `PRE_BUILD`, `POST_BUILD`) with priority ordering. Includes registries for custom serializers, executors, and node types.
-
-### Approval Gates
-
-`GateController` pauses execution at designated nodes and waits for manual approval or rejection. Thread-safe with both sync and async support, configurable timeouts, and integration with execution callbacks and tracing.
-
-### Dynamic DAG Modification
-
-`DynamicExecutor` adds or removes nodes mid-execution based on runtime results. Expander callbacks receive a node's output and return `DynamicModification` specs. Operates on a runtime snapshot so the original DAG stays immutable.
-
-### Resource-Aware Scheduling
-
-Nodes declare `ResourceRequirements` (GPU, CPU, memory) and `ResourcePool` enforces capacity constraints. `ResourceAwareExecutor` and `AsyncResourceAwareExecutor` use bottom-level priority scheduling to dispatch the highest-value ready node that fits available resources.
-
-### Graph Partitioning
-
-Split large DAGs into balanced partitions with three Rust-native algorithms: level-based grouping, cost-balanced assignment, and communication-minimizing Kernighan-Lin refinement. `PartitionedDAGExecutor` executes partitions in dependency order, each internally parallelized.
-
-### Content-Addressable Caching
-
-Merkle-tree cache keys propagate upstream changes automatically: `CacheKeyBuilder` hashes task source code and predecessor results so any upstream change invalidates all affected downstream nodes. `FileSystemCacheBackend` stores results as pickle with LRU/TTL/size eviction. `CachedDAGExecutor` skips unchanged nodes across runs.
-
-## Requirements
-
-- Python >= 3.12
+See [CONTRIBUTING.md](https://github.com/ByteVeda/dagron/blob/master/CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/ByteVeda/dagron/blob/master/LICENSE)
