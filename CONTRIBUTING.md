@@ -79,6 +79,38 @@ npm start        # local dev server at http://localhost:3000
 6. Commit with a descriptive message
 7. Push and open a PR against `master`
 
+## CI
+
+`ci.yml` is an orchestrator, not a job list. It detects which paths a PR
+touched and calls only the suites that can be affected:
+
+| Suite | Workflow | Runs when |
+| --- | --- | --- |
+| Rust | `ci-rust.yml` | `crates/`, Cargo manifests |
+| Python | `ci-python.yml` | the above, plus `dagron/`, `tests/python/`, `pyproject.toml` |
+| Docs | `ci-docs.yml` | `docs/` |
+| Release readiness | `ci-release.yml` | anything that affects a published artifact |
+
+A Rust-only PR therefore never installs pnpm; a docs-only PR never compiles
+the workspace. Pushes to `master` and `workflow_dispatch` runs ignore the
+filter and run everything, so merged code is always covered in full.
+
+Lint hooks stay defined once in `.pre-commit-config.yaml`. Each suite runs
+`pre-commit` with a `SKIP` list of the hooks it does not own, so CI and your
+local hooks can never disagree about which tool or version to run. The list is
+an exclusion rather than an inclusion on purpose: a newly added hook runs in
+every suite until someone skips it, which fails loudly instead of quietly
+going unchecked.
+
+Because every suite is skippable, branch protection cannot require them
+individually — a skipped job reports nothing. **`CI status` is the single
+required check**: it always runs and fails if anything it depends on did not
+succeed or skip.
+
+Shared setup lives in `.github/actions/` (`setup-rust`, `setup-python`,
+`setup-node`, `pre-commit`, `verify-sdist`). `actionlint.yml` lints the
+workflows and composite actions themselves.
+
 ## Releasing
 
 `dagron` ships to two registries from a single tag:
@@ -99,7 +131,7 @@ To cut a release:
    python scripts/check_versions.py
    ```
 
-   CI's `publish-readiness` job runs the same check on every PR, and the
+   CI's `Release readiness` suite runs the same check on every PR, and the
    release workflow re-runs it with `--expect <tag>`.
 2. Add the release section to `CHANGELOG.md`.
 3. Merge to `master`, then push a bare version tag: `git tag 0.2.0 && git push origin 0.2.0`.
@@ -114,7 +146,7 @@ never moved: if `crates-v<version>` already points somewhere else the job
 fails rather than rewriting it. This also makes `workflow_dispatch` runs
 traceable, since those are not driven by a tag in the first place.
 
-The `publish-readiness` CI job also compiles the sdist in a clean environment
+The `Release readiness` suite also compiles the sdist in a clean environment
 on every PR. That matters because the sdist — not the wheels — is what users on
 unsupported platforms build from, and a green wheel job proves nothing about it.
 

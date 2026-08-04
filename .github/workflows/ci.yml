@@ -5,146 +5,148 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Manual re-trigger, for when back-to-back squash merges leave master HEAD
+  # without a run because concurrency cancelled it.
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# CI only reads the repo. pull-requests:read lets dorny/paths-filter enumerate
+# a PR's changed files.
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
-  lint:
+  changes:
+    name: Detect changed paths
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.decide.outputs.rust }}
+      python: ${{ steps.decide.outputs.python }}
+      docs: ${{ steps.decide.outputs.docs }}
+      release: ${{ steps.decide.outputs.release }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v4
         with:
-          components: rustfmt, clippy
+          # Each suite reruns when its own sources, the shared Rust workspace,
+          # the composite actions it uses, or its own workflow change.
+          filters: |
+            shared: &shared
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.pre-commit-config.yaml'
+              - '.github/actions/setup-rust/**'
+              - '.github/actions/pre-commit/**'
+              - '.github/workflows/ci.yml'
+            rust:
+              - *shared
+              - '.github/workflows/ci-rust.yml'
+            # The bindings are compiled into the wheel, so a crates/ change can
+            # break Python at runtime even when the Python sources are untouched.
+            python:
+              - *shared
+              - 'dagron/**'
+              - 'tests/python/**'
+              - 'scripts/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/actions/setup-python/**'
+              - '.github/workflows/ci-python.yml'
+            # Deliberately not *shared: the docs site is MDX and TypeScript
+            # with no build-time dependency on the Rust workspace.
+            docs:
+              - 'docs/**'
+              - '.pre-commit-config.yaml'
+              - '.github/actions/setup-node/**'
+              - '.github/actions/pre-commit/**'
+              - '.github/workflows/ci-docs.yml'
+            release:
+              - *shared
+              - 'dagron/**'
+              - 'pyproject.toml'
+              - 'scripts/check_versions.py'
+              - '.github/actions/setup-python/**'
+              - '.github/actions/verify-sdist/**'
+              - '.github/workflows/ci-release.yml'
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Decide which suites run
+        id: decide
+        # FORCE is true on push and workflow_dispatch — run everything there,
+        # so master is always covered by a full run. PRs honor the filter.
+        env:
+          FORCE: ${{ github.event_name != 'pull_request' }}
+          RUST: ${{ steps.filter.outputs.rust }}
+          PYTHON: ${{ steps.filter.outputs.python }}
+          DOCS: ${{ steps.filter.outputs.docs }}
+          RELEASE: ${{ steps.filter.outputs.release }}
+        run: |
+          decide() {
+            if [ "$FORCE" = "true" ] || [ "$2" = "true" ]; then
+              echo "$1=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "$1=false" >> "$GITHUB_OUTPUT"
+            fi
+          }
+          decide rust "$RUST"
+          decide python "$PYTHON"
+          decide docs "$DOCS"
+          decide release "$RELEASE"
 
-      - uses: astral-sh/setup-uv@v7
+  rust:
+    name: Rust
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    uses: ./.github/workflows/ci-rust.yml
 
-      - name: Install Python dependencies
-        run: uv sync --group dev
+  python:
+    name: Python
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    uses: ./.github/workflows/ci-python.yml
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
+  docs:
+    name: Docs
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    uses: ./.github/workflows/ci-docs.yml
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: pnpm
-          cache-dependency-path: docs/pnpm-lock.yaml
+  release-readiness:
+    name: Release readiness
+    needs: changes
+    if: needs.changes.outputs.release == 'true'
+    uses: ./.github/workflows/ci-release.yml
 
-      - name: Install docs dependencies
-        run: cd docs && pnpm install --frozen-lockfile
-
-      - name: Check Rust formatting
-        run: cargo fmt --all --check
-
-      # Inlined rather than pre-commit/action@v3.0.1, whose pinned
-      # actions/cache@v4 runs on the deprecated Node 20.
-      - name: Cache pre-commit environments
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
-
-      - name: Run pre-commit
-        run: uvx pre-commit run --all-files --show-diff-on-failure --color=always
-
-  rust-test:
+  # Single required status check. Every suite is skippable, so branch
+  # protection cannot depend on them individually — a skipped job never
+  # reports. This one always runs and fails if anything it needs did not
+  # succeed or skip.
+  ci-status:
+    name: CI status
+    if: always()
+    needs: [changes, rust, python, docs, release-readiness]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: false
-
-      - name: Run Rust tests
-        run: cargo test --workspace
-
-  # Everything that has to hold before a tag can be released, checked on every
-  # PR so it is never discovered at release time.
-  publish-readiness:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: false
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Check version declarations agree
-        run: python scripts/check_versions.py
-
-      - name: Verify crates are publishable
-        run: cargo publish -p dagron-core -p dagron-ui --dry-run
-
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-
-      - uses: ./.github/actions/verify-sdist
-
-  test:
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.12", "3.13"]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: astral-sh/setup-uv@v7
-        with:
-          cache-dependency-glob: pyproject.toml
-
-      - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Build native extension
-        uses: PyO3/maturin-action@v1
-        with:
-          command: develop
-          args: --release
-
-      - name: Run tests
-        run: uv run pytest tests/python/ -v --tb=short --junit-xml=results.xml --ignore=tests/python/test_benchmarks.py --ignore=tests/python/test_reactive_bench.py
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: results.xml
+      - name: Check that no required job failed
+        env:
+          RESULTS: ${{ toJson(needs) }}
+        run: |
+          echo "$RESULTS"
+          failed=$(echo "$RESULTS" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print(','.join(k for k, v in data.items() if v['result'] not in ('success', 'skipped')))
+          ")
+          if [ -n "$failed" ]; then
+            echo "::error::Failing or cancelled jobs: $failed"
+            exit 1
+          fi
