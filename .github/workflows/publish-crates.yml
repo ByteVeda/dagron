@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: crates.io
+    permissions:
+      contents: write  # to push the crates-v* tag
     steps:
       - uses: actions/checkout@v6
 
@@ -88,3 +90,26 @@ jobs:
             echo "Publishing $crate $VERSION"
             cargo publish --locked --no-verify -p "$crate"
           done
+
+      # Records which commit the crates were cut from. Kept in its own
+      # namespace so it never collides with the version tags that drive the
+      # PyPI release, and written only after a successful publish.
+      - name: Tag the published commit
+        env:
+          TAG: crates-v${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          existing=$(git ls-remote --tags origin "refs/tags/$TAG" | cut -f1)
+          if [ -n "$existing" ]; then
+            if [ "$existing" = "$GITHUB_SHA" ]; then
+              echo "$TAG already points at $GITHUB_SHA"
+              exit 0
+            fi
+            echo "::error::$TAG already exists at $existing — refusing to move it"
+            exit 1
+          fi
+
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $GITHUB_SHA as $TAG"
