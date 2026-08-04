@@ -10,9 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **`dagron-core` and `dagron-ui` are published to crates.io.** A new
   `publish-crates.yml` workflow releases both from the same version tag that
-  drives the PyPI release, authenticating over OIDC Trusted Publishing rather
-  than a stored registry token. Re-running a release skips versions already on
-  the registry. `dagron-py` stays `publish = false` — it exists only to be
+  drives the PyPI release. Re-running a release skips versions already on the
+  registry. `dagron-py` stays `publish = false` — it exists only to be
   compiled into the wheel.
 - **`publish-readiness` CI job.** Every PR now verifies that the Cargo,
   `pyproject.toml`, and `dagron.__version__` declarations agree

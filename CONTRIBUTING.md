@@ -111,20 +111,23 @@ The `publish-readiness` CI job also compiles the sdist in a clean environment
 on every PR. That matters because the sdist — not the wheels — is what users on
 unsupported platforms build from, and a green wheel job proves nothing about it.
 
-### One-time registry setup
+### Registry credentials
 
-Both workflows authenticate with OIDC Trusted Publishing — there are no
-long-lived registry tokens in repository secrets.
+Each workflow runs in a GitHub environment that holds its own credential, so
+neither is reachable from an ordinary PR build.
 
-- **PyPI** — the `pypi` environment, configured as a trusted publisher for
-  `publish.yml`.
-- **crates.io** — the `crates-io` environment. Trusted publishing can only be
-  configured for a crate that already exists, so the *first* version of
-  `dagron-core` and `dagron-ui` must be pushed manually with `cargo publish`
-  under a maintainer's API token. After that, add a trusted publisher on each
-  crate's crates.io settings page pointing at `ByteVeda/dagron` /
-  `publish-crates.yml` / environment `crates-io`, and every later release runs
-  hands-off.
+- **PyPI** — the `pypi` environment, using OIDC Trusted Publishing. No stored
+  token.
+- **crates.io** — the `crates.io` environment, using a `CARGO_TOKEN` secret
+  (a crates.io API token with publish scope for `dagron-core` and
+  `dagron-ui`).
+
+crates.io also supports OIDC Trusted Publishing, which would remove the stored
+token. It can only be configured for a crate that already exists, so it is a
+worthwhile follow-up once the first version of each crate is published: add a
+trusted publisher on each crate's settings page pointing at `ByteVeda/dagron` /
+`publish-crates.yml` / environment `crates.io`, then swap the `Publish crates`
+step over to `rust-lang/crates-io-auth-action` and drop the secret.
 
 ## Project Structure
 
