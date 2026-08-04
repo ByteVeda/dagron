@@ -290,8 +290,8 @@ _CHILD_SCRIPT = textwrap.dedent(
 
 def _run_child(cache_dir: Path, arg: int) -> tuple[object, bool, int]:
     """Run a fresh Python process that uses our ContentCache."""
-    # Pass our py_src/ on the child's PYTHONPATH so it imports the same dagron.
-    dagron_path = str(Path(__file__).parent.parent.parent / "py_src")
+    # Pass the repo root on the child's PYTHONPATH so it imports the same dagron.
+    dagron_path = str(Path(__file__).parent.parent.parent)
     code = _CHILD_SCRIPT.format(
         dagron_path=dagron_path,
         cache_dir=str(cache_dir),

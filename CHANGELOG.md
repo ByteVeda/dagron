@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **`dagron-core` and `dagron-ui` are published to crates.io.** A new
+  `publish-crates.yml` workflow releases both from the same version tag that
+  drives the PyPI release. Re-running a release skips versions already on the
+  registry. `dagron-py` stays `publish = false` — it exists only to be
+  compiled into the wheel.
+- **`publish-readiness` CI job.** Every PR now verifies that the Cargo,
+  `pyproject.toml`, and `dagron.__version__` declarations agree
+  (`scripts/check_versions.py`), that both crates pass `cargo publish
+  --dry-run`, and that the sdist compiles and imports in a clean environment.
+
+### Fixed
+
+- **The sdist could not be built from source.** `maturin` prunes `dagron-ui`
+  from the sdist because it is an optional dependency, but `dagron-py` still
+  declares the path dependency, so `cargo metadata` failed on a missing
+  manifest. Anyone installing on a platform without a prebuilt wheel hit this.
+  The crate is now shipped in the sdist, and both CI and the release workflow
+  compile the sdist in a clean environment to keep it that way.
+
+### Changed
+
+- **The Python package moved from `py_src/dagron/` to `dagron/` at the repo
+  root.** No import or packaging change for users — the wheel and sdist
+  contents are unchanged.
+- Shared crate metadata (version, edition, MSRV, license, repository) now lives
+  in `[workspace.package]` instead of being repeated in each crate manifest.
+- `dagron-ui` gained the package metadata crates.io requires, and both
+  published crates now ship a README and LICENSE.
+
 ## [0.1.1] - 2026-05-10
 
 ### Added

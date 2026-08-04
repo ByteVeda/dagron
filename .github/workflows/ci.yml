@@ -46,8 +46,16 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
+      # Inlined rather than pre-commit/action@v3.0.1, whose pinned
+      # actions/cache@v4 runs on the deprecated Node 20.
+      - name: Cache pre-commit environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
       - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
+        run: uvx pre-commit run --all-files --show-diff-on-failure --color=always
 
   rust-test:
     runs-on: ubuntu-latest
@@ -63,6 +71,39 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test --workspace
+
+  # Everything that has to hold before a tag can be released, checked on every
+  # PR so it is never discovered at release time.
+  publish-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check version declarations agree
+        run: python scripts/check_versions.py
+
+      - name: Verify crates are publishable
+        run: cargo publish -p dagron-core -p dagron-ui --dry-run
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - uses: ./.github/actions/verify-sdist
 
   test:
     needs: lint
