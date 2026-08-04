@@ -107,6 +107,13 @@ To cut a release:
 Both workflows trigger on the tag and are safe to re-run: each skips any
 version already present on its registry.
 
+After a successful crates.io publish, `publish-crates.yml` tags the commit it
+released as `crates-v<version>` — a separate namespace from the version tags
+that drive the release, so the two never collide. The tag is only ever created,
+never moved: if `crates-v<version>` already points somewhere else the job
+fails rather than rewriting it. This also makes `workflow_dispatch` runs
+traceable, since those are not driven by a tag in the first place.
+
 The `publish-readiness` CI job also compiles the sdist in a clean environment
 on every PR. That matters because the sdist — not the wheels — is what users on
 unsupported platforms build from, and a green wheel job proves nothing about it.
