@@ -13,10 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   drives the PyPI release. Re-running a release skips versions already on the
   registry. `dagron-py` stays `publish = false` — it exists only to be
   compiled into the wheel.
-- **`publish-readiness` CI job.** Every PR now verifies that the Cargo,
+- **`Release readiness` CI suite.** Every PR now verifies that the Cargo,
   `pyproject.toml`, and `dagron.__version__` declarations agree
   (`scripts/check_versions.py`), that both crates pass `cargo publish
   --dry-run`, and that the sdist compiles and imports in a clean environment.
+- **Path-filtered CI.** `ci.yml` became an orchestrator that detects which
+  paths a PR touched and calls only the affected suites (`ci-rust.yml`,
+  `ci-python.yml`, `ci-docs.yml`, `ci-release.yml`). A Rust-only PR no longer
+  installs pnpm; a docs-only PR no longer compiles the workspace. Pushes to
+  `master` ignore the filter and run everything. `CI status` is the single
+  required check, since skipped jobs report nothing to branch protection.
+  Shared setup moved into composite actions, and `actionlint.yml` now lints
+  the workflows themselves.
 
 ### Fixed
 
