@@ -38,14 +38,24 @@ runs:
           exit 1
         fi
 
-        venv="$(mktemp -d)/venv"
+        workdir=$(mktemp -d)
+        venv="$workdir/venv"
         uv venv --python "$PYTHON_VERSION" "$venv"
-        VIRTUAL_ENV="$venv" uv pip install --no-binary :all: "${sdists[0]}"
+        VIRTUAL_ENV="$venv" uv pip install --no-binary :all: "$(realpath "${sdists[0]}")"
 
+        # Run from outside the repo: the package lives at the checkout root, so
+        # `import dagron` here would resolve to the (uncompiled) source tree and
+        # test nothing about what was actually installed.
+        cd "$workdir"
         "$venv/bin/python" - <<'PY'
+        from pathlib import Path
+
         import dagron
+
+        installed = Path(dagron.__file__).resolve()
+        assert "site-packages" in installed.parts, f"imported source tree, not the sdist: {installed}"
 
         dag = dagron.DAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
         assert dag.node_count() == 2, dag.node_count()
-        print("sdist OK:", dagron.__version__)
+        print("sdist OK:", dagron.__version__, installed)
         PY
