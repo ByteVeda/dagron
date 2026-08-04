@@ -1,8 +1,15 @@
 [package]
 name = "dagron-py"
-version = "0.1.1"
-edition = "2021"
-rust-version = "1.83"
+description = "PyO3 bindings for dagron — distributed as the `dagron` wheel on PyPI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+# Shipped to PyPI as a wheel via maturin; a source crate has no standalone use.
+publish = false
 
 [lib]
 name = "dagron"
@@ -13,8 +20,8 @@ extension-module = ["pyo3/extension-module"]
 dashboard = ["dagron-ui"]
 
 [dependencies]
-dagron-core = { path = "../dagron-core" }
-dagron-ui = { path = "../dagron-ui", optional = true }
+dagron-core = { workspace = true }
+dagron-ui = { workspace = true, optional = true }
 ahash = { workspace = true }
 pyo3 = { workspace = true }
 serde_json = { workspace = true }
