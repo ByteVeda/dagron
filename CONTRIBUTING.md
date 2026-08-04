@@ -159,21 +159,21 @@ unsupported platforms build from, and a green wheel job proves nothing about it.
 
 ### Registry credentials
 
-Each workflow runs in a GitHub environment that holds its own credential, so
-neither is reachable from an ordinary PR build.
+Both registries use OIDC Trusted Publishing. **No registry token is stored in
+the repository**, so there is nothing to leak or rotate: each job exchanges its
+own OIDC identity for a credential valid only for that run.
 
-- **PyPI** — the `pypi` environment, using OIDC Trusted Publishing. No stored
-  token.
-- **crates.io** — the `crates.io` environment, using a `CARGO_TOKEN` secret
-  (a crates.io API token with publish scope for `dagron-core` and
-  `dagron-ui`).
+- **PyPI** — the `pypi` environment, trusted publisher for `publish.yml`.
+- **crates.io** — the `crates.io` environment. Each of `dagron-core` and
+  `dagron-ui` needs a trusted publisher on its crates.io settings page
+  pointing at `ByteVeda/dagron` / `publish-crates.yml` / environment
+  `crates.io`. A crate with none configured fails to publish — the trust is
+  per crate, not per repository.
 
-crates.io also supports OIDC Trusted Publishing, which would remove the stored
-token. It can only be configured for a crate that already exists, so it is a
-worthwhile follow-up once the first version of each crate is published: add a
-trusted publisher on each crate's settings page pointing at `ByteVeda/dagron` /
-`publish-crates.yml` / environment `crates.io`, then swap the `Publish crates`
-step over to `rust-lang/crates-io-auth-action` and drop the secret.
+Both crates should also have **Require trusted publishing for all new
+versions** enabled, which makes crates.io reject API tokens outright. Note
+that this closes the manual `cargo publish` break-glass path too: with it on,
+a release can only go out through this workflow.
 
 ## Project Structure
 
