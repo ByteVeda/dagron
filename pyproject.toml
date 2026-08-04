@@ -47,6 +47,11 @@ manifest-path = "crates/dagron-py/Cargo.toml"
 python-source = "."
 module-name = "dagron._internal"
 features = ["pyo3/extension-module"]
+# dagron-ui is an optional dependency (the `dashboard` feature is off by
+# default), so maturin prunes it from the sdist — but dagron-py's manifest
+# still declares the path dep, and cargo fails to load the workspace without
+# it. Ship the crate so the sdist is buildable.
+include = [{ path = "crates/dagron-ui/**/*", format = "sdist" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
