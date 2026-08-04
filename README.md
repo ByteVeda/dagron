@@ -12,7 +12,7 @@
 
 Build, execute, and analyze directed acyclic graphs with a fluent Python API — powered by Rust and [petgraph](https://github.com/petgraph/petgraph) under the hood.
 
-**[Documentation](https://byteveda.github.io/dagron/)** · [Getting started](https://byteveda.github.io/dagron/guide/getting-started) · [Cookbook](https://byteveda.github.io/dagron/guide/cookbook) · [API reference](https://byteveda.github.io/dagron/api)
+**[Documentation](https://docs.byteveda.org/dagron/)** · [Getting started](https://docs.byteveda.org/dagron/guide/getting-started) · [Cookbook](https://docs.byteveda.org/dagron/guide/cookbook) · [API reference](https://docs.byteveda.org/dagron/api)
 
 </div>
 
