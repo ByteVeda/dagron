@@ -115,6 +115,8 @@ jobs:
           command: sdist
           args: --out dist
 
+      - uses: ./.github/actions/verify-sdist
+
       - name: Upload sdist
         uses: actions/upload-artifact@v7
         with:

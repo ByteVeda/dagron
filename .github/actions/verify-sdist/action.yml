@@ -1,0 +1,51 @@
+name: Verify sdist
+description: >-
+  Compile an already-built sdist in a clean environment and import the result.
+  The sdist is what users on platforms without a wheel build from, so a passing
+  wheel job says nothing about whether it works.
+
+inputs:
+  sdist-glob:
+    description: Glob matching exactly one built sdist tarball.
+    required: false
+    default: dist/*.tar.gz
+  python-version:
+    description: Python version to compile and import under.
+    required: false
+    default: "3.12"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - uses: astral-sh/setup-uv@v7
+
+    - name: Compile sdist in a clean environment
+      shell: bash
+      env:
+        SDIST_GLOB: ${{ inputs.sdist-glob }}
+        PYTHON_VERSION: ${{ inputs.python-version }}
+      run: |
+        set -euo pipefail
+
+        # shellcheck disable=SC2206  # deliberate glob expansion
+        sdists=($SDIST_GLOB)
+        if [ ${#sdists[@]} -ne 1 ]; then
+          echo "::error::expected exactly one sdist matching '$SDIST_GLOB', found ${#sdists[@]}"
+          exit 1
+        fi
+
+        venv="$(mktemp -d)/venv"
+        uv venv --python "$PYTHON_VERSION" "$venv"
+        VIRTUAL_ENV="$venv" uv pip install --no-binary :all: "${sdists[0]}"
+
+        "$venv/bin/python" - <<'PY'
+        import dagron
+
+        dag = dagron.DAGBuilder().add_node("a").add_node("b").add_edge("a", "b").build()
+        assert dag.node_count() == 2, dag.node_count()
+        print("sdist OK:", dagron.__version__)
+        PY
