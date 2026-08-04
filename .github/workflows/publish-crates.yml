@@ -3,7 +3,11 @@ name: Publish to crates.io
 on:
   push:
     tags:
+      # A bare version tag releases both registries at once. `crates-v*` is
+      # also accepted so the crates can be cut on their own — and because it
+      # is the tag this workflow writes, re-pushing one re-runs the release.
       - "[0-9]+.[0-9]+.[0-9]+*"
+      - "crates-v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
 
 permissions:
@@ -45,7 +49,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            python scripts/check_versions.py --expect "$GITHUB_REF_NAME"
+            # Both tag forms carry the same version; drop the crates-v prefix.
+            python scripts/check_versions.py --expect "${GITHUB_REF_NAME#crates-v}"
           else
             python scripts/check_versions.py
           fi
