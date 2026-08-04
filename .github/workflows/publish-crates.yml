@@ -30,6 +30,7 @@ jobs:
     environment: crates.io
     permissions:
       contents: write  # to push the crates-v* tag
+      id-token: write  # to mint a short-lived crates.io token over OIDC
     steps:
       - uses: actions/checkout@v6
 
@@ -62,17 +63,20 @@ jobs:
       - name: Package and verify crates
         run: cargo package --locked -p dagron-core -p dagron-ui
 
+      # Exchanges this job's OIDC identity for a token scoped to these crates
+      # and valid for this run only. Requires a trusted publisher configured on
+      # each crate for ByteVeda/dagron + publish-crates.yml + environment
+      # crates.io. No registry token is stored in the repository.
+      - name: Authenticate to crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
       - name: Publish crates
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-
-          if [ -z "${CARGO_REGISTRY_TOKEN:-}" ]; then
-            echo "::error::CARGO_TOKEN is not set in the 'crates.io' environment"
-            exit 1
-          fi
 
           # Re-running a release must be a no-op for versions already up.
           already_published() {
