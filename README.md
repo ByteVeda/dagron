@@ -8,7 +8,8 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776ab?logo=python&logoColor=white)](https://python.org)
 [![Built with Rust](https://img.shields.io/badge/built%20with-Rust-dea584?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![v0.1.0](https://img.shields.io/badge/version-0.1.0-blue)](https://pypi.org/project/dagron/)
+[![PyPI](https://img.shields.io/pypi/v/dagron?label=pypi)](https://pypi.org/project/dagron/)
+[![crates.io](https://img.shields.io/crates/v/dagron-core?label=crates.io)](https://crates.io/crates/dagron-core)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://byteveda.github.io/dagron/)
 
 Build, execute, and analyze directed acyclic graphs with a fluent Python API — powered by Rust and [petgraph](https://github.com/petgraph/petgraph) under the hood.
