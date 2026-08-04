@@ -73,7 +73,7 @@ bench = [
 
 [tool.ruff]
 target-version = "py312"
-src = [".", "tests"]
+src = [".", "tests", "scripts"]
 line-length = 99
 
 [tool.ruff.lint]
