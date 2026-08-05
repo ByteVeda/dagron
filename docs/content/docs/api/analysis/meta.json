@@ -1,0 +1,5 @@
+{
+  "title": "Analysis & Validation",
+  "defaultOpen": false,
+  "pages": ["analysis", "contracts", "dataframe"]
+}

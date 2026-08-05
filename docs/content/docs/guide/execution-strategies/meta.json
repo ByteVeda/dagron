@@ -1,0 +1,14 @@
+{
+  "title": "Execution Strategies",
+  "defaultOpen": true,
+  "pages": [
+    "incremental",
+    "conditional",
+    "dynamic-dags",
+    "checkpointing",
+    "caching",
+    "resource-scheduling",
+    "approval-gates",
+    "distributed"
+  ]
+}

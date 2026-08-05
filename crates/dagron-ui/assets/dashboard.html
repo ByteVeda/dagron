@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dagron dashboard</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --pending: #e2e8f0;
+      --running: #60a5fa;
+      --completed: #4ade80;
+      --failed: #f87171;
+      --skipped: #d1d5db;
+      --timed_out: #fb923c;
+      --cancelled: #a78bfa;
+      --cache_hit: #34d399;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border)
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600
+    }
+
+    .badge-idle {
+      background: #334155;
+      color: #94a3b8
+    }
+
+    .badge-running {
+      background: rgba(96, 165, 250, 0.15);
+      color: #60a5fa
+    }
+
+    .badge-running::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #60a5fa;
+      animation: pulse 1.5s ease-in-out infinite
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    #duration {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: auto;
+      font-variant-numeric: tabular-nums
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden
+    }
+
+    #graph-panel {
+      flex: 0 0 65%;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #graph-panel svg {
+      max-width: 100%;
+      height: auto
+    }
+
+    #detail-panel {
+      flex: 0 0 35%;
+      overflow-y: auto;
+      border-left: 1px solid var(--border);
+      padding: 16px
+    }
+
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 12px
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px
+    }
+
+    th {
+      text-align: left;
+      padding: 6px 8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500
+    }
+
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle
+    }
+
+    .status-dot.running {
+      animation: pulse 1.5s ease-in-out infinite
+    }
+
+    .gates-section {
+      margin-top: 24px
+    }
+
+    .gate-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .gate-name {
+      flex: 1;
+      font-weight: 500
+    }
+
+    .gate-btn {
+      padding: 4px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer
+    }
+
+    .gate-btn.approve {
+      background: #4ade80;
+      color: #0f172a
+    }
+
+    .gate-btn.reject {
+      background: #f87171;
+      color: #0f172a
+    }
+
+    .gate-btn:hover {
+      opacity: .85
+    }
+
+    #empty-state {
+      color: var(--muted);
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 14px
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>dagron</h1>
+    <span id="status-badge" class="badge badge-idle">Idle</span>
+    <span id="duration"></span>
+  </header>
+  <main>
+    <div id="graph-panel">
+      <div id="empty-state">Waiting for DAG execution&hellip;</div>
+    </div>
+    <div id="detail-panel">
+      <h2>Nodes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Status</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="node-tbody"></tbody>
+      </table>
+      <div class="gates-section" id="gates-section" style="display:none">
+        <h2>Gates</h2>
+        <div id="gates-container"></div>
+      </div>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.11.0/lib/viz-standalone.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const STATUS_COLORS = {
+        pending: "#e2e8f0", running: "#60a5fa", completed: "#4ade80",
+        failed: "#f87171", skipped: "#d1d5db", timed_out: "#fb923c",
+        cancelled: "#a78bfa", cache_hit: "#34d399"
+      };
+
+      let state = { nodes: {}, dagDot: "", isRunning: false, startedAt: null, gates: [] };
+      let durationTimer = null;
+      let vizInstance = null;
+
+      // ---- Viz.js init ----
+      if (typeof Viz !== "undefined") {
+        Viz.instance().then(v => { vizInstance = v; renderGraph(); });
+      }
+
+      // ---- SSE ----
+      const evtSource = new EventSource("/api/events");
+      evtSource.onmessage = function (e) {
+        const evt = JSON.parse(e.data);
+        handleEvent(evt);
+      };
+      evtSource.onopen = function () { fetchState(); };
+
+      // ---- State fetching ----
+      function fetchState() {
+        fetch("/api/state").then(r => r.json()).then(s => {
+          if (s.dag_dot) {
+            state.dagDot = s.dag_dot;
+            state.isRunning = s.is_running;
+            state.startedAt = s.started_at;
+            state.gates = s.waiting_gates || [];
+            s.nodes = s.nodes || [];
+            s.nodes.forEach(n => { state.nodes[n.name] = n; });
+            renderGraph();
+            renderTable();
+            renderGates();
+            updateBadge();
+            if (state.isRunning) startDurationTimer();
+            else stopDurationTimer();
+          }
+        }).catch(() => { });
+      }
+
+      // ---- Initial state ----
+      fetchState();
+
+      function handleEvent(evt) {
+        switch (evt.type) {
+          case "execution_started":
+            state.dagDot = evt.dag_dot;
+            state.isRunning = true;
+            state.startedAt = evt.started_at;
+            state.nodes = {};
+            evt.nodes.forEach(n => { state.nodes[n] = { name: n, status: "pending", duration_seconds: null, error: null }; });
+            renderGraph();
+            renderTable();
+            updateBadge();
+            startDurationTimer();
+            break;
+          case "node_started":
+            if (state.nodes[evt.name]) state.nodes[evt.name].status = "running";
+            patchNodeColor(evt.name, "running");
+            renderTable();
+            break;
+          case "node_finished":
+            if (state.nodes[evt.name]) {
+              state.nodes[evt.name].status = evt.status;
+              state.nodes[evt.name].duration_seconds = evt.duration_seconds;
+              state.nodes[evt.name].error = evt.error;
+            }
+            patchNodeColor(evt.name, evt.status);
+            renderTable();
+            break;
+          case "execution_finished":
+            state.isRunning = false;
+            updateBadge();
+            stopDurationTimer();
+            if (evt.total_duration_seconds != null) {
+              document.getElementById("duration").textContent = fmtDur(evt.total_duration_seconds);
+            }
+            break;
+          case "lagged":
+            // Slow client fell behind the broadcast channel — re-fetch full state.
+            fetch("/api/state").then(r => r.json()).then(s => {
+              state.dagDot = s.dag_dot;
+              state.isRunning = s.is_running;
+              state.startedAt = s.started_at;
+              state.gates = s.waiting_gates || [];
+              state.nodes = {};
+              s.nodes.forEach(n => { state.nodes[n.name] = n; });
+              renderGraph();
+              renderTable();
+              renderGates();
+              updateBadge();
+              if (state.isRunning) startDurationTimer();
+              else stopDurationTimer();
+            }).catch(() => { });
+            break;
+        }
+        // Refresh gates periodically
+        fetch("/api/state").then(r => r.json()).then(s => {
+          state.gates = s.waiting_gates || [];
+          renderGates();
+        }).catch(() => { });
+      }
+
+      // ---- Graph rendering ----
+      function renderGraph() {
+        if (!vizInstance || !state.dagDot) return;
+        // Inject node colors into DOT
+        let dot = state.dagDot;
+        try {
+          const svg = vizInstance.renderSVGElement(dot);
+          // Apply status colors
+          Object.values(state.nodes).forEach(n => {
+            applyColorToSVG(svg, n.name, n.status);
+          });
+          const panel = document.getElementById("graph-panel");
+          panel.innerHTML = "";
+          panel.appendChild(svg);
+        } catch (e) {
+          console.error("Viz.js render error:", e);
+        }
+      }
+
+      function applyColorToSVG(svg, name, status) {
+        const color = STATUS_COLORS[status] || STATUS_COLORS.pending;
+        const titles = svg.querySelectorAll("title");
+        for (const t of titles) {
+          if (t.textContent.trim() === name) {
+            const g = t.parentElement;
+            if (!g) continue;
+            const shapes = g.querySelectorAll("ellipse,polygon,path");
+            shapes.forEach(s => {
+              s.setAttribute("fill", color);
+              if (status === "running") s.style.animation = "pulse 1.5s ease-in-out infinite";
+              else s.style.animation = "";
+            });
+            break;
+          }
+        }
+      }
+
+      function patchNodeColor(name, status) {
+        const svg = document.querySelector("#graph-panel svg");
+        if (!svg) return renderGraph();
+        applyColorToSVG(svg, name, status);
+      }
+
+      // ---- Node table ----
+      function renderTable() {
+        const tbody = document.getElementById("node-tbody");
+        const rows = Object.values(state.nodes).map(n => {
+          const color = STATUS_COLORS[n.status] || STATUS_COLORS.pending;
+          const dur = n.duration_seconds != null ? fmtDur(n.duration_seconds) : "-";
+          return `<tr>
+      <td>${esc(n.name)}</td>
+      <td><span class="status-dot ${n.status}" style="background:${color}"></span>${esc(n.status)}</td>
+      <td>${dur}</td>
+    </tr>`;
+        });
+        tbody.innerHTML = rows.join("");
+      }
+
+      // ---- Gates ----
+      function renderGates() {
+        const sec = document.getElementById("gates-section");
+        const container = document.getElementById("gates-container");
+        if (!state.gates.length) { sec.style.display = "none"; return; }
+        sec.style.display = "";
+        container.innerHTML = state.gates.map(g => `
+    <div class="gate-row">
+      <span class="gate-name">${esc(g)}</span>
+      <button class="gate-btn approve" onclick="approveGate('${esc(g)}')">Approve</button>
+      <button class="gate-btn reject" onclick="rejectGate('${esc(g)}')">Reject</button>
+    </div>
+  `).join("");
+      }
+      window.approveGate = function (name) {
+        fetch("/api/gates/" + encodeURIComponent(name) + "/approve", { method: "POST" })
+          .then(() => { state.gates = state.gates.filter(g => g !== name); renderGates(); });
+      };
+      window.rejectGate = function (name) {
+        const reason = prompt("Rejection reason (optional):");
+        fetch("/api/gates/" + encodeURIComponent(name) + "/reject", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason || "" })
+        }).then(() => { state.gates = state.gates.filter(g => g !== name); renderGates(); });
+      };
+
+      // ---- Badge & timer ----
+      function updateBadge() {
+        const badge = document.getElementById("status-badge");
+        if (state.isRunning) {
+          badge.className = "badge badge-running";
+          badge.textContent = "Running";
+        } else {
+          badge.className = "badge badge-idle";
+          badge.textContent = "Idle";
+        }
+      }
+      function startDurationTimer() {
+        stopDurationTimer();
+        const el = document.getElementById("duration");
+        durationTimer = setInterval(() => {
+          if (state.startedAt) el.textContent = fmtDur((Date.now() / 1000) - state.startedAt);
+        }, 200);
+      }
+      function stopDurationTimer() { if (durationTimer) { clearInterval(durationTimer); durationTimer = null; } }
+
+      // ---- Helpers ----
+      function fmtDur(s) { return s < 1 ? (s * 1000).toFixed(0) + "ms" : s.toFixed(2) + "s"; }
+      function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+    })();
+  </script>
+</body>
+
+</html>

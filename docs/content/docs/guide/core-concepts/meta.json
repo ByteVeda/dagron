@@ -1,0 +1,11 @@
+{
+  "title": "Core Concepts",
+  "defaultOpen": true,
+  "pages": [
+    "building-dags",
+    "executing-tasks",
+    "inspecting-graphs",
+    "transforms",
+    "serialization"
+  ]
+}

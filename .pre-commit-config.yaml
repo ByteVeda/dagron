@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.2
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.19.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        additional_dependencies: []
+        pass_filenames: false
+        entry: mypy dagron/ tests/ scripts/
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --check
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: clippy
+        name: clippy
+        entry: cargo clippy --workspace --all-targets -- -D warnings
+        language: system
+        types: [rust]
+        pass_filenames: false
+      - id: docs-biome
+        name: docs biome
+        entry: bash -c 'cd docs && pnpm exec biome check'
+        language: system
+        files: ^docs/(src/|content/|source\.config\.ts|next\.config\.mjs|biome\.json|tsconfig\.json|package\.json)
+        pass_filenames: false
+      - id: docs-types
+        name: docs types
+        entry: bash -c 'cd docs && pnpm types:check'
+        language: system
+        files: ^docs/(src/|source\.config\.ts|next\.config\.mjs|tsconfig\.json|package\.json|content/.*\.mdx)
+        pass_filenames: false

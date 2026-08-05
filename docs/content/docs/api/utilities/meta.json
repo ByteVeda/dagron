@@ -1,0 +1,13 @@
+{
+  "title": "Utilities",
+  "defaultOpen": false,
+  "pages": [
+    "template",
+    "versioning",
+    "compose",
+    "display",
+    "integration",
+    "plugins",
+    "modern-api"
+  ]
+}

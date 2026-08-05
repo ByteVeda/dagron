@@ -1,0 +1,33 @@
+[package]
+name = "dagron-core"
+description = "Fast DAG construction, analysis, and scheduling engine"
+readme = "README.md"
+keywords = ["dag", "graph", "scheduling", "workflow", "petgraph"]
+categories = ["algorithms", "data-structures"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lib]
+name = "dagron_core"
+
+[dependencies]
+petgraph = { workspace = true }
+ahash = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bincode = { workspace = true }
+memmap2 = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "graph_bench"
+harness = false

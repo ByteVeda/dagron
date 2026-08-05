@@ -1,0 +1,30 @@
+[workspace]
+members = ["crates/dagron-core", "crates/dagron-py", "crates/dagron-ui"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.1"
+edition = "2021"
+rust-version = "1.83"
+license = "MIT"
+repository = "https://github.com/ByteVeda/dagron"
+homepage = "https://byteveda.github.io/dagron/"
+authors = ["ByteVeda"]
+
+[workspace.dependencies]
+dagron-core = { version = "0.1.1", path = "crates/dagron-core" }
+dagron-ui = { version = "0.1.1", path = "crates/dagron-ui" }
+petgraph = "0.7"
+ahash = "0.8"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+memmap2 = "0.9"
+regex = "1"
+pyo3 = { version = "0.24", features = ["abi3-py312", "multiple-pymethods"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync", "macros", "time"] }
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
+indexmap = { version = "2", features = ["serde"] }
+futures = "0.3"

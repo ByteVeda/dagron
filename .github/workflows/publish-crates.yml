@@ -1,0 +1,124 @@
+name: Publish to crates.io
+
+on:
+  push:
+    tags:
+      # A bare version tag releases both registries at once. `crates-v*` is
+      # also accepted so the crates can be cut on their own — and because it
+      # is the tag this workflow writes, re-pushing one re-runs the release.
+      - "[0-9]+.[0-9]+.[0-9]+*"
+      - "crates-v[0-9]+.[0-9]+.[0-9]+*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never let two releases publish concurrently.
+concurrency:
+  group: publish-crates
+  cancel-in-progress: false
+
+env:
+  # dagron-core and dagron-ui are independent — neither depends on the other —
+  # so publish order does not matter and no index-propagation wait is needed.
+  CRATES: dagron-core dagron-ui
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: crates.io
+    permissions:
+      contents: write  # to push the crates-v* tag
+      id-token: write  # to mint a short-lived crates.io token over OIDC
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check version declarations agree
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            # Both tag forms carry the same version; drop the crates-v prefix.
+            python scripts/check_versions.py --expect "${GITHUB_REF_NAME#crates-v}"
+          else
+            python scripts/check_versions.py
+          fi
+          version=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('Cargo.toml').read_text())['workspace']['package']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Builds each crate from its packaged tarball; `cargo publish` below then
+      # skips the identical rebuild via --no-verify.
+      - name: Package and verify crates
+        run: cargo package --locked -p dagron-core -p dagron-ui
+
+      # Exchanges this job's OIDC identity for a token scoped to these crates
+      # and valid for this run only. Requires a trusted publisher configured on
+      # each crate for ByteVeda/dagron + publish-crates.yml + environment
+      # crates.io. No registry token is stored in the repository.
+      - name: Authenticate to crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish crates
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # Re-running a release must be a no-op for versions already up.
+          already_published() {
+            local crate=$1 code
+            code=$(curl -sS -o /tmp/crate.json -w '%{http_code}' \
+              -H "User-Agent: dagron-release (github.com/ByteVeda/dagron)" \
+              "https://crates.io/api/v1/crates/$crate")
+            case "$code" in
+              200) jq -e --arg v "$VERSION" 'any(.versions[]?; .num == $v)' /tmp/crate.json >/dev/null ;;
+              404) return 1 ;;  # crate not on crates.io yet
+              *)   echo "::error::crates.io returned HTTP $code for $crate"; exit 1 ;;
+            esac
+          }
+
+          for crate in $CRATES; do
+            if already_published "$crate"; then
+              echo "$crate $VERSION already on crates.io — skipping"
+              continue
+            fi
+            echo "Publishing $crate $VERSION"
+            cargo publish --locked --no-verify -p "$crate"
+          done
+
+      # Records which commit the crates were cut from. Kept in its own
+      # namespace so it never collides with the version tags that drive the
+      # PyPI release, and written only after a successful publish.
+      - name: Tag the published commit
+        env:
+          TAG: crates-v${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          existing=$(git ls-remote --tags origin "refs/tags/$TAG" | cut -f1)
+          if [ -n "$existing" ]; then
+            if [ "$existing" = "$GITHUB_SHA" ]; then
+              echo "$TAG already points at $GITHUB_SHA"
+              exit 0
+            fi
+            echo "::error::$TAG already exists at $existing — refusing to move it"
+            exit 1
+          fi
+
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $GITHUB_SHA as $TAG"
